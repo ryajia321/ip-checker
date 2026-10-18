@@ -358,7 +358,8 @@ function renderScore(){
 }
 const isDatacenter=()=>{const hay=(S.isp+' '+S.org+' '+S.asn).toLowerCase();
 return DC_KEY.some(k=>hay.includes(k));};
-const CC_WORDS={'hong kong':'HK','hongkong':'HK','singapore':'SG','japan':'JP','japanese':'JP','korea':'KR',
+const CC_WORDS={'hong kong':'HK','hongkong':'HK','china':'CN','chinese':'CN','china telecom':'CN','china unicom':'CN','china mobile':'CN',
+'singapore':'SG','japan':'JP','japanese':'JP','korea':'KR',
 'taiwan':'TW','united states':'US','america':'US','united kingdom':'UK','britain':'UK','england':'UK',
 'germany':'DE','netherlands':'NL','holland':'NL','france':'FR','canada':'CA','australia':'AU','russia':'RU',
 'india':'IN','brazil':'BR','ireland':'IE','sweden':'SE','norway':'NO','finland':'FI','switzerland':'CH',
