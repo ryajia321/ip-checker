@@ -159,9 +159,30 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
     <div class="cell"><div class="t">🔤 语言一致性</div><div class="v" id="c_lang_v">—</div><div class="d" id="c_lang_d"></div><span class="pill unk" id="c_lang_p">待检测</span></div>
   </div>
 
+  <div class="sec-label">浏览器指纹</div>
+  <div class="card">
+    <div class="kv"><span class="k">📱 设备</span><span class="r" id="f_dev">—</span></div>
+    <div class="kv"><span class="k">🖥️ 屏幕</span><span class="r" id="f_scr">—</span></div>
+    <div class="kv"><span class="k">⚙️ CPU 核心</span><span class="r" id="f_cpu">—</span></div>
+    <div class="kv"><span class="k">🎨 Canvas 指纹</span><span class="r" id="f_cv" style="font-family:monospace">—</span></div>
+    <div style="font-size:12px;color:var(--mut);margin-top:8px">指纹用于网站识别设备，和 IP 纯洁度无关，仅供参考。</div>
+  </div>
+
+  <div class="sec-label">IP 稳定性监控</div>
+  <div class="card">
+    <div class="kv"><span class="k">当前出口</span><span class="r" id="mon_v" style="font-size:12px">—</span></div>
+    <div class="kv"><span class="k">状态</span><span class="r"><span class="pill unk" id="mon_p">未监控</span></span></div>
+    <div id="mon_hist"></div>
+    <button class="btn ghost" id="monBtn" style="margin-top:12px">▶ 开始监控（每 30 秒查一次）</button>
+    <div style="font-size:12px;color:var(--mut);margin-top:8px">VPN 中途换节点是登录失败的常见原因。开着它再去登录，IP 变了会立刻提醒。</div>
+  </div>
+
   <div class="card" style="margin-top:14px">
     <h2><span class="em">⚡</span>网络延迟</h2>
     <div id="pingRows"><div class="kv"><span class="k">待检测</span><span class="r">—</span></div></div>
+    <div class="kv"><span class="k">下载速度</span><span class="r" id="speedV">—</span></div>
+    <div style="font-size:11.5px;color:var(--mut)" id="speedD"></div>
+    <button class="btn ghost" id="speedBtn" style="margin-top:10px">⚡ 测试下载速度</button>
   </div>
 
   <div class="card">
@@ -449,10 +470,81 @@ const t=new Date().toLocaleString('zh-CN',{hour12:false});
 const L=['','时间：'+t,'出口 IP：'+S.ip,
 '归属地：'+zhLoc(),'运营商/组织：'+S.org,'ASN：'+S.asn,
 '纯洁度评分：'+S.score+'/100','---'];
-['isp','nat','v6','rtc','bl','tz','lang','proxy','dev'].forEach(k=>{if(S.checks[k])L.push(S.checks[k]);});
+['isp','nat','v6','rtc','bl','tz','lang','proxy','dev','speed','mon'].forEach(k=>{if(S.checks[k])L.push(S.checks[k]);});
 if(S.ping.length)L.push('延迟：'+S.ping.join(' / '));
 L.push('---','结论：'+($('grade').textContent)+'。启发式评分，仅供参考。');
 return L.join('\n');
+}
+function canvasFP(){
+try{
+const c=document.createElement('canvas');c.width=200;c.height=50;
+const x=c.getContext('2d');
+x.textBaseline='top';x.font='16px Arial';
+x.fillStyle='#f60';x.fillRect(0,0,200,50);
+x.fillStyle='#069';x.fillText('ip-check-指纹',10,16);
+const d=c.toDataURL();
+let h=0;for(let i=0;i<d.length;i++){h=(h*31+d.charCodeAt(i))>>>0;}
+return h.toString(16).padStart(8,'0');
+}catch(e){return '未知';}
+}
+function fillFingerprint(){
+$('f_dev').textContent=S.ua||'未知设备';
+$('f_scr').textContent=screen.width+'×'+screen.height+' · '+screen.colorDepth+'bit';
+$('f_cpu').textContent=(navigator.hardwareConcurrency||'未知')+' 核';
+$('f_cv').textContent=canvasFP();
+}
+async function speedTest(){
+const btn=$('speedBtn');btn.disabled=true;btn.textContent='测速中…';
+const urls=[
+'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js',
+'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js'
+];
+try{
+let workUrl=null;
+for(const u of urls){
+try{const r=await fetch(u+'?sp='+Date.now(),{cache:'no-store'});const b=await r.blob();if(b.size>100000){workUrl=u;break;}}catch(e){}
+}
+if(!workUrl)throw 0;
+const t0=performance.now();
+const r2=await fetch(workUrl+'?sp2='+Date.now(),{cache:'no-store'});
+const b2=await r2.blob();
+const sec=(performance.now()-t0)/1000;
+const mbps=(b2.size*8/sec/1e6);
+$('speedV').textContent=mbps.toFixed(1)+' Mbps';
+const lv=mbps>50?'🚀 极速':mbps>20?'✅ 流畅':mbps>5?'😐 一般':'🐢 较慢';
+$('speedD').textContent=lv+' · '+(b2.size/1024).toFixed(0)+'KB 用时 '+sec.toFixed(1)+'s';
+S.checks.speed='下载速度 '+mbps.toFixed(1)+'Mbps';
+}catch(e){$('speedV').textContent='测速失败';$('speedD').textContent='文件下载失败，换个网络试试';}
+btn.disabled=false;btn.textContent='↻ 重新测速';
+}
+let monTimer=null,monCount=0;
+async function toggleMonitor(){
+const btn=$('monBtn');
+if(monTimer){clearInterval(monTimer);monTimer=null;btn.textContent='▶ 开始监控（每 30 秒查一次）';setPill('mon_p','unk','已停止');return;}
+btn.textContent='⏹ 停止监控';
+setPill('mon_p','run','<span class="spin"></span>监控中');
+$('mon_v').textContent=S.ip;
+const check=async()=>{
+try{
+const j=await fetchJSON('https://ipwho.is/',null,10000);
+const nip=j&&j.ip;
+if(nip&&nip!==S.ip){
+monCount++;
+const t=new Date().toLocaleTimeString('zh-CN',{hour12:false});
+const hist=$('mon_hist');
+const row=document.createElement('div');row.className='kv';
+row.innerHTML='<span class="k">'+t+'</span><span class="r" style="font-size:11px">'+esc(S.ip+' → '+nip)+'</span>';
+hist.insertBefore(row,hist.firstChild);
+while(hist.children.length>5)hist.removeChild(hist.lastChild);
+S.ip=nip;$('mon_v').textContent=nip;$('ip').textContent=nip;
+setPill('mon_p','bad','IP 变化 '+monCount+' 次');
+showToast('⚠️ 出口 IP 变化了！');
+S.checks.mon='监控中 IP 变化 '+monCount+' 次';
+}
+}catch(e){}
+};
+monTimer=setInterval(check,30000);
+check();
 }
 let started=false;
 async function main(){
@@ -478,7 +570,7 @@ $('ip').textContent=S.ip;
 $('loc').textContent='📍 '+zhLoc()+(S.tz?' · '+S.tz:'');
 $('map').style.display='block';
 initMap();
-checkDevice();
+checkDevice();fillFingerprint();
 checkISP();detectIPType();checkTZ();checkLang();
 await Promise.allSettled([checkV6(),checkRTC(),checkBL(),checkProxy(),checkPing()]);
 renderScore();
@@ -486,6 +578,8 @@ btn.disabled=false;btn.textContent='↻ 重新检测';btn.style.opacity='1';star
 }
 document.addEventListener('DOMContentLoaded',()=>{
 $('startBtn').onclick=main;
+$('monBtn').onclick=toggleMonitor;
+$('speedBtn').onclick=speedTest;
 $('copyBtn').onclick=async()=>{
 const txt=buildReport();
 try{await navigator.clipboard.writeText(txt);$('copyBtn').textContent='✅ 已复制，去粘贴吧';}
