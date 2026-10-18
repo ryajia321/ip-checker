@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>IP 纯洁度检测</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { font-family:-apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background:#f2f4f8; color:#1a1a1a; padding:16px; max-width:640px; margin:0 auto; }
+  h1 { font-size:22px; text-align:center; margin:12px 0 4px; }
+  .sub { text-align:center; color:#888; font-size:13px; margin-bottom:16px; }
+  .card { background:#fff; border-radius:14px; padding:18px; margin-bottom:14px; box-shadow:0 2px 10px rgba(0,0,0,.05); }
+  .card h2 { font-size:16px; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f0f0f0; font-size:14px; }
+  .row:last-child { border:none; }
+  .k { color:#888; } .v { font-weight:600; text-align:right; word-break:break-all; max-width:60%; }
+  .score-wrap { text-align:center; padding:10px 0; }
+  .score { font-size:64px; font-weight:800; line-height:1; }
+  .grade { display:inline-block; margin-top:8px; padding:6px 20px; border-radius:20px; font-size:15px; font-weight:700; color:#fff; }
+  .g-clean { background:#34a853; } .g-warn { background:#f9ab00; } .g-dirty { background:#ea4335; } .g-unknown { background:#9aa0a6; }
+  .deduct { font-size:13px; color:#666; margin-top:10px; text-align:left; }
+  .deduct li { list-style:none; padding:6px 0; border-bottom:1px dashed #eee; }
+  .deduct li:last-child { border:none; }
+  .neg { color:#ea4335; font-weight:600; } .pos { color:#34a853; font-weight:600; }
+  .btn { display:block; width:100%; padding:14px; border:none; border-radius:12px; background:#1a73e8; color:#fff; font-size:16px; font-weight:700; margin:6px 0 14px; cursor:pointer; }
+  .btn:active { opacity:.85; } .btn:disabled { background:#9aa0a6; }
+  .loading { text-align:center; color:#888; padding:20px; font-size:14px; }
+  .spin { display:inline-block; width:18px; height:18px; border:3px solid #ddd; border-top-color:#1a73e8; border-radius:50%; animation:sp 0.8s linear infinite; vertical-align:-4px; margin-right:8px; }
+  @keyframes sp { to { transform:rotate(360deg); } }
+  .note { font-size:12px; color:#999; margin-top:10px; line-height:1.7; }
+  .ok-tag { color:#34a853; font-weight:700; } .bad-tag { color:#ea4335; font-weight:700; } .warn-tag { color:#f9ab00; font-weight:700; }
+  footer { text-align:center; color:#aaa; font-size:12px; margin:20px 0 10px; line-height:1.8; }
+</style>
+</head>
+<body>
+<h1>🛡️ IP 纯洁度检测</h1>
+<p class="sub">一键检测你的网络出口干不干净</p>
+
+<button class="btn" id="startBtn" onclick="runAll()">开始检测</button>
+
+<div class="card" id="ipCard" style="display:none">
+  <h2>📍 出口 IP 信息</h2>
+  <div id="ipInfo"><div class="loading"><span class="spin"></span>查询中…</div></div>
+</div>
+
+<div class="card" id="scoreCard" style="display:none">
+  <h2>✨ 纯洁度评分</h2>
+  <div class="score-wrap">
+    <div class="score" id="scoreNum">–</div>
+    <div><span class="grade g-unknown" id="scoreGrade">检测中</span></div>
+  </div>
+  <ul class="deduct" id="deductList"></ul>
+  <p class="note">评分逻辑：机房/代理 IP -40，命中 Spamhaus 黑名单 -30；80+ 干净，50–79 一般，50 以下较脏。机房判断为启发式（ASN/组织名关键词），仅供参考。</p>
+</div>
+
+<div class="card" id="rtcCard" style="display:none">
+  <h2>🕳️ WebRTC 泄漏检测</h2>
+  <div id="rtcInfo"><div class="loading"><span class="spin"></span>检测中…</div></div>
+</div>
+
+<div class="card" id="consCard" style="display:none">
+  <h2>🧭 一致性检查</h2>
+  <div id="consInfo"><div class="loading"><span class="spin"></span>检测中…</div></div>
+  <p class="note">登录类风控（如 Meta / Google）会对比 IP 属地与浏览器时区、语言是否一致，不一致容易触发验证或拒绝。</p>
+</div>
+
+<div class="card">
+  <h2>🔍 DNS 泄漏</h2>
+  <p style="font-size:14px;line-height:1.8;color:#555">
+    真实的 DNS 泄漏测试需要通配符 DNS 服务端配合，本站 v1 暂未接入。<br><br>
+    <b>自查方法：</b>访问 <b>dnsleaktest.com</b> 点 "Standard test"，看查到的 DNS 服务器归属地是否跟你的 VPN 节点一致——不一致就是泄漏了。
+  </p>
+</div>
+
+<footer>本站不记录任何访问数据 · 检测在你的浏览器内完成<br>IP 纯洁度检测 v1.0</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const show = id => $(id).style.display = 'block';
+
+// 机房 ASN / 组织关键词（启发式）
+const DC_KEYWORDS = ['amazon','aws','google','microsoft','azure','digitalocean','vultr','linode',
+'hetzner','ovh','alibaba','tencent','huawei','oracle','ibm','rackspace','choopa','constant',
+'psychz','quadranet','colo','datacenter','hosting','server','vps','cloud','cdn'];
+
+let ipData = null;
+
+async function runAll() {
+  const btn = $('startBtn');
+  btn.disabled = true; btn.textContent = '检测中…';
+  ['ipCard','scoreCard','rtcCard','consCard'].forEach(show);
+  try {
+    await checkIP();
+    await checkPurity();
+  } catch(e) {
+    $('ipInfo').innerHTML = '<p style="color:#ea4335">查询失败，请检查网络后重试。</p>';
+  }
+  checkWebRTC();
+  checkConsistency();
+  btn.disabled = false; btn.textContent = '重新检测';
+}
+
+async function checkIP() {
+  const r = await fetch('https://ipwho.is/');
+  ipData = await r.json();
+  if (!ipData.success) throw new Error('ipwho failed');
+  const c = ipData.connection || {};
+  $('ipInfo').innerHTML = `
+    <div class="row"><span class="k">IP 地址</span><span class="v">${ipData.ip}</span></div>
+    <div class="row"><span class="k">国家/城市</span><span class="v">${ipData.country} ${ipData.city||''}</span></div>
+    <div class="row"><span class="k">运营商 ISP</span><span class="v">${c.isp||'未知'}</span></div>
+    <div class="row"><span class="k">组织</span><span class="v">${c.org||'未知'}</span></div>
+    <div class="row"><span class="k">ASN</span><span class="v">AS${c.asn||'?'} ${c.domain?('('+c.domain+')'):''}</span></div>
+    <div class="row"><span class="k">时区</span><span class="v">${(ipData.timezone&&ipData.timezone.id)||'未知'}</span></div>`;
+}
+
+function reversedIP(ip) {
+  if (ip.includes('.')) return ip.split('.').reverse().join('.');
+  // IPv6 简化处理：展开并反转 nibble
+  let full = ip.split('::');
+  let head = full[0] ? full[0].split(':') : [];
+  let tail = full[1] ? full[1].split(':') : [];
+  while (head.length + tail.length < 8) head.push('0');
+  return (head.concat(tail)).join('').padStart(32,'0').split('').reverse().join('.');
+}
+
+async function dohBL(ip, zone) {
+  try {
+    const q = reversedIP(ip) + '.' + zone;
+    const r = await fetch('https://cloudflare-dns.com/dns-query?name='+encodeURIComponent(q)+'&type=A',
+      { headers: { 'Accept': 'application/dns-json' } });
+    const j = await r.json();
+    return (j.Answer && j.Answer.length > 0) ? j.Answer.map(a=>a.data) : null;
+  } catch(e) { return 'error'; }
+}
+
+async function checkPurity() {
+  const list = $('deductList');
+  list.innerHTML = '';
+  let score = 100;
+  const add = (html) => { const li = document.createElement('li'); li.innerHTML = html; list.appendChild(li); };
+
+  // 1. 机房检测
+  const c = ipData.connection || {};
+  const hay = ((c.isp||'')+' '+(c.org||'')+' '+(c.domain||'')).toLowerCase();
+  const hit = DC_KEYWORDS.find(k => hay.includes(k));
+  if (hit) {
+    score -= 40;
+    add(`<span class="neg">−40</span> 命中机房关键词 <b>${hit}</b>（${c.org||c.isp||'未知组织'}），疑似机房/代理 IP`);
+  } else {
+    add(`<span class="pos">+0</span> 未命中机房特征，像是普通宽带/住宅 IP`);
+  }
+
+  // 2. Spamhaus ZEN
+  add(`<span style="color:#888">…</span> 正在查 Spamhaus 黑名单…`);
+  const bl = await dohBL(ipData.ip, 'zen.spamhaus.org');
+  list.removeChild(list.lastChild);
+  if (bl === 'error') {
+    add(`<span class="warn-tag">?</span> Spamhaus 查询超时，结果未知`);
+  } else if (bl) {
+    score -= 30;
+    add(`<span class="neg">−30</span> 命中 Spamhaus ZEN 黑名单（${bl.join(', ')}），该 IP 有滥用记录`);
+  } else {
+    add(`<span class="pos">+0</span> 未命中 Spamhaus 黑名单`);
+  }
+
+  score = Math.max(0, score);
+  $('scoreNum').textContent = score;
+  $('scoreNum').style.color = score >= 80 ? '#34a853' : score >= 50 ? '#f9ab00' : '#ea4335';
+  const g = $('scoreGrade');
+  if (score >= 80) { g.textContent = '干净'; g.className = 'grade g-clean'; }
+  else if (score >= 50) { g.textContent = '一般'; g.className = 'grade g-warn'; }
+  else { g.textContent = '较脏'; g.className = 'grade g-dirty'; }
+}
+
+function checkWebRTC() {
+  const box = $('rtcInfo');
+  const ips = new Set();
+  try {
+    const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+    pc.createDataChannel('');
+    pc.onicecandidate = e => {
+      if (e.candidate) {
+        const m = e.candidate.candidate.match(/([0-9a-fA-F:.]+)/);
+        if (m) ips.add(m[1]);
+      } else {
+        pc.close();
+        renderRTC([...ips]);
+      }
+    };
+    pc.createOffer().then(o => pc.setLocalDescription(o));
+    setTimeout(() => { try { pc.close(); } catch(e){} renderRTC([...ips]); }, 6000);
+  } catch(e) { box.innerHTML = '<p>浏览器不支持 WebRTC 检测。</p>'; }
+
+  function renderRTC(list) {
+    const pub = list.filter(ip => !/^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|fc|fe80)/i.test(ip) && ip.includes('.'));
+    if (pub.length === 0) {
+      box.innerHTML = `<p><span class="ok-tag">✓ 未发现泄漏</span> <span style="font-size:13px;color:#888">（未探测到额外的公网 IP）</span></p>`;
+    } else {
+      box.innerHTML = `<p><span class="bad-tag">⚠ 检测到 ${pub.length} 个公网 IP</span></p>
+        <p style="font-size:13px;margin-top:8px;word-break:break-all">${pub.join('<br>')}</p>
+        <p class="note">WebRTC 泄漏会暴露你的真实出口，建议在浏览器设置中禁用 WebRTC 或使用防泄漏插件。</p>`;
+    }
+  }
+}
+
+function checkConsistency() {
+  const box = $('consInfo');
+  if (!ipData) { box.innerHTML = '<p>等待 IP 信息…</p>'; return; }
+  const btz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const iptz = (ipData.timezone && ipData.timezone.id) || '';
+  const lang = navigator.language || '';
+  let html = '';
+  if (iptz && btz) {
+    const same = btz.toLowerCase() === iptz.toLowerCase();
+    html += `<div class="row"><span class="k">浏览器时区</span><span class="v">${btz}</span></div>
+             <div class="row"><span class="k">IP 属地时区</span><span class="v">${iptz}</span></div>
+             <div class="row"><span class="k">时区一致性</span><span class="v">${same?'<span class="ok-tag">✓ 一致</span>':'<span class="warn-tag">⚠ 不一致</span>'}</span></div>`;
+  }
+  html += `<div class="row"><span class="k">浏览器语言</span><span class="v">${lang}</span></div>
+           <div class="row"><span class="k">IP 属地国家</span><span class="v">${ipData.country||'未知'}</span></div>`;
+  box.innerHTML = html;
+}
+</script>
+</body>
+</html>
