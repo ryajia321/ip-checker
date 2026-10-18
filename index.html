@@ -98,16 +98,14 @@ header.top p{font-size:12px;color:var(--mut)}
 .btn.ghost{background:var(--card2);border:1px solid var(--line);box-shadow:none;margin-top:10px;font-size:14px}
 .hint{font-size:12px;color:var(--mut);text-align:center;margin-top:14px;line-height:1.7}
 footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-height:1.8}
-.loading{position:fixed;inset:0;background:rgba(7,11,22,.92);display:flex;flex-direction:column;gap:14px;
-  align-items:center;justify-content:center;z-index:999;transition:opacity .4s}
-.loading.hide{opacity:0;pointer-events:none}
-.loading .big{width:46px;height:46px;border:3px solid rgba(174,187,255,.25);border-top-color:#aebbff;border-radius:50%;animation:sp .8s linear infinite}
-.loading p{font-size:13px;color:var(--mut)}
+
+
+
+
 @media(max-width:380px){.grid{grid-template-columns:1fr}.hero-ip{font-size:25px}}
 </style>
 </head>
 <body>
-<div class="loading" id="loading"><div class="big"></div><p id="loadingTxt">正在检测你的网络…</p></div>
 <div class="wrap">
   <header class="top">
     <div class="logo">🛰️</div>
@@ -117,16 +115,17 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
   <div class="card">
     <h2><span class="em">📍</span>你的出口位置</h2>
     <div class="hero-ip" id="ip">—</div>
-    <div><span class="hero-loc" id="loc">定位中…</span></div>
-    <div id="map"></div>
+    <div><span class="hero-loc" id="loc">点击下方按钮开始检测</span></div>
+    <div id="map" style="display:none"></div>
+    <button class="btn" id="startBtn" style="margin-top:14px">🚀 开始检测</button>
   </div>
 
   <div class="sec-label">IP 类型识别</div>
   <div class="card">
-    <div class="kv"><span class="k">🏢 机房 IP</span><span class="r"><span class="pill run" id="t_dc">检测中</span></span></div>
-    <div class="kv"><span class="k">🏠 住宅 IP</span><span class="r"><span class="pill run" id="t_home">检测中</span></span></div>
-    <div class="kv"><span class="k">🌱 原生 IP</span><span class="r"><span class="pill run" id="t_native">检测中</span></span></div>
-    <div class="kv"><span class="k">📡 广播 IP</span><span class="r"><span class="pill run" id="t_cast">检测中</span></span></div>
+    <div class="kv"><span class="k">🏢 机房 IP</span><span class="r"><span class="pill unk" id="t_dc">待检测</span></span></div>
+    <div class="kv"><span class="k">🏠 住宅 IP</span><span class="r"><span class="pill unk" id="t_home">待检测</span></span></div>
+    <div class="kv"><span class="k">🌱 原生 IP</span><span class="r"><span class="pill unk" id="t_native">待检测</span></span></div>
+    <div class="kv"><span class="k">📡 广播 IP</span><span class="r"><span class="pill unk" id="t_cast">待检测</span></span></div>
     <div style="font-size:12px;color:var(--mut);margin-top:10px;line-height:1.7" id="t_note"></div>
   </div>
 
@@ -142,25 +141,25 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
           <circle id="ringFg" cx="75" cy="75" r="64" fill="none" stroke="url(#rg)" stroke-width="13"
             stroke-linecap="round" stroke-dasharray="402.1" stroke-dashoffset="402.1"/>
         </svg>
-        <div class="val"><b id="scoreNum">–</b><span>/ 100</span><div class="grade g-warn" id="grade">检测中</div></div>
+        <div class="val"><b id="scoreNum">–</b><span>/ 100</span><div class="grade g-warn" id="grade" style="display:none">检测中</div></div>
       </div>
-      <ul class="deduct" id="deduct"><div class="none">正在逐项检查…</div></ul>
+      <ul class="deduct" id="deduct"><div class="none">点击「开始检测」后逐项检查</div></ul>
     </div>
   </div>
 
   <div class="sec-label">深度检测</div>
   <div class="grid">
-    <div class="cell"><div class="t">🏢 运营商 / 机房</div><div class="v" id="c_isp_v">—</div><div class="d" id="c_isp_d"></div><span class="pill run" id="c_isp_p"><span class="spin"></span>检测中</span></div>
-    <div class="cell"><div class="t">🌐 IPv6 支持</div><div class="v" id="c_v6_v">—</div><div class="d" id="c_v6_d"></div><span class="pill run" id="c_v6_p"><span class="spin"></span>检测中</span></div>
-    <div class="cell"><div class="t">🕸️ WebRTC 泄漏</div><div class="v" id="c_rtc_v">—</div><div class="d" id="c_rtc_d"></div><span class="pill run" id="c_rtc_p"><span class="spin"></span>检测中</span></div>
-    <div class="cell"><div class="t">🚫 黑名单 (Spamhaus)</div><div class="v" id="c_bl_v">—</div><div class="d" id="c_bl_d"></div><span class="pill run" id="c_bl_p"><span class="spin"></span>检测中</span></div>
-    <div class="cell"><div class="t">🕘 时区一致性</div><div class="v" id="c_tz_v">—</div><div class="d" id="c_tz_d"></div><span class="pill run" id="c_tz_p"><span class="spin"></span>检测中</span></div>
-    <div class="cell"><div class="t">🔤 语言一致性</div><div class="v" id="c_lang_v">—</div><div class="d" id="c_lang_d"></div><span class="pill run" id="c_lang_p"><span class="spin"></span>检测中</span></div>
+    <div class="cell"><div class="t">🏢 运营商 / 机房</div><div class="v" id="c_isp_v">—</div><div class="d" id="c_isp_d"></div><span class="pill unk" id="c_isp_p">待检测</span></div>
+    <div class="cell"><div class="t">🌐 IPv6 支持</div><div class="v" id="c_v6_v">—</div><div class="d" id="c_v6_d"></div><span class="pill unk" id="c_v6_p">待检测</span></div>
+    <div class="cell"><div class="t">🕸️ WebRTC 泄漏</div><div class="v" id="c_rtc_v">—</div><div class="d" id="c_rtc_d"></div><span class="pill unk" id="c_rtc_p">待检测</span></div>
+    <div class="cell"><div class="t">🚫 黑名单 (Spamhaus)</div><div class="v" id="c_bl_v">—</div><div class="d" id="c_bl_d"></div><span class="pill unk" id="c_bl_p">待检测</span></div>
+    <div class="cell"><div class="t">🕘 时区一致性</div><div class="v" id="c_tz_v">—</div><div class="d" id="c_tz_d"></div><span class="pill unk" id="c_tz_p">待检测</span></div>
+    <div class="cell"><div class="t">🔤 语言一致性</div><div class="v" id="c_lang_v">—</div><div class="d" id="c_lang_d"></div><span class="pill unk" id="c_lang_p">待检测</span></div>
   </div>
 
   <div class="card" style="margin-top:14px">
     <h2><span class="em">⚡</span>网络延迟</h2>
-    <div id="pingRows"><div class="kv"><span class="k">正在测速…</span><span class="r"><span class="spin"></span></span></div></div>
+    <div id="pingRows"><div class="kv"><span class="k">待检测</span><span class="r">—</span></div></div>
   </div>
 
   <div class="card">
@@ -245,7 +244,7 @@ function renderScore(){
   (function tick(){const p=Math.min(1,(performance.now()-t0)/1200);
     $('scoreNum').textContent=Math.round(S.score*p);
     if(p<1)requestAnimationFrame(tick);})( );
-  const g=$('grade');
+  const g=$('grade');g.style.display='block';
   if(S.score>=80){g.className='grade g-ok';g.textContent='干净';}
   else if(S.score>=50){g.className='grade g-warn';g.textContent='一般';}
   else{g.className='grade g-bad';g.textContent='较脏';}
@@ -417,7 +416,37 @@ if(S.ping.length)L.push('延迟：'+S.ping.join(' / '));
 L.push('---','结论：'+($('grade').textContent)+'。启发式评分，仅供参考。');
 return L.join('\n');
 }
+let started=false;
 async function main(){
+if(started)return;started=true;
+const btn=$('startBtn');btn.disabled=true;btn.textContent='⏳ 检测中…';btn.style.opacity='.7';
+['c_isp_p','c_v6_p','c_rtc_p','c_bl_p','c_tz_p','c_lang_p'].forEach(runPill);
+['t_dc','t_home','t_native','t_cast'].forEach(id=>{const e=$(id);e.className='pill run';e.innerHTML='<span class="spin"></span>检测中';});
+$('deduct').innerHTML='<div class="none">正在逐项检查…</div>';
+try{
+const j=await fetchJSON('https://ipwho.is/',null,10000);
+if(!j.success)throw 0;
+S.ip=j.ip||'—';S.cc=j.country_code||'';S.country=j.country||'';S.city=j.city||'';
+S.lat=j.latitude||0;S.lon=j.longitude||0;
+S.isp=j.connection&&j.connection.isp||'—';S.org=j.connection&&j.connection.org||S.isp;
+S.asn=j.connection&&j.connection.asn?'AS'+j.connection.asn:'—';S.tz=(j.timezone&&j.timezone.id)||'';
+}catch(e){
+$('ip').textContent='查询失败';$('loc').textContent='网络异常，点下方按钮重试';
+btn.disabled=false;btn.textContent='🚀 重新检测';btn.style.opacity='1';started=false;
+return;
+}
+$('ip').textContent=S.ip;
+$('loc').textContent='📍 '+(S.city?S.city+' · ':'')+S.country+(S.tz?' · '+S.tz:'');
+$('map').style.display='block';
+initMap();
+checkDevice();
+checkISP();detectIPType();checkTZ();checkLang();
+await Promise.allSettled([checkV6(),checkRTC(),checkBL(),checkProxy(),checkPing()]);
+renderScore();
+btn.disabled=false;btn.textContent='↻ 重新检测';btn.style.opacity='1';started=false;
+}
+document.addEventListener('DOMContentLoaded',()=>{
+$('startBtn').onclick=main;
 $('retryBtn').onclick=()=>location.reload();
 $('copyBtn').onclick=async()=>{
 const txt=buildReport();
@@ -427,31 +456,7 @@ ta.select();try{document.execCommand('copy');$('copyBtn').textContent='✅ 已�
 ta.remove();}
 setTimeout(()=>$('copyBtn').textContent='📋 一键复制检测报告',2500);
 };
-['c_isp_p','c_v6_p','c_rtc_p','c_bl_p','c_tz_p','c_lang_p'].forEach(runPill);
-$('loadingTxt').textContent='正在查询出口 IP…';
-try{
-const j=await fetchJSON('https://ipwho.is/',null,10000);
-if(!j.success)throw 0;
-S.ip=j.ip||'—';S.cc=j.country_code||'';S.country=j.country||'';S.city=j.city||'';
-S.lat=j.latitude||0;S.lon=j.longitude||0;
-S.isp=j.connection&&j.connection.isp||'—';S.org=j.connection&&j.connection.org||S.isp;
-S.asn=j.connection&&j.connection.asn?'AS'+j.connection.asn:'—';S.tz=(j.timezone&&j.timezone.id)||'';
-}catch(e){
-$('loading').classList.add('hide');
-$('ip').textContent='查询失败';$('loc').textContent='网络异常，点下方重新检测';
-return;
-}
-$('ip').textContent=S.ip;
-$('loc').textContent='📍 '+(S.city?S.city+' · ':'')+S.country+(S.tz?' · '+S.tz:'');
-initMap();
-checkDevice();
-$('loadingTxt').textContent='正在深度检测…';
-checkISP();detectIPType();checkTZ();checkLang();
-await Promise.allSettled([checkV6(),checkRTC(),checkBL(),checkProxy(),checkPing()]);
-renderScore();
-$('loading').classList.add('hide');
-}
-document.addEventListener('DOMContentLoaded',main);
+});
 </script>
 </body>
 </html>
