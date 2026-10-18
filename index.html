@@ -22,7 +22,6 @@ body{
     radial-gradient(600px 320px at 15% -5%, rgba(110,139,255,.16), transparent 60%),
     radial-gradient(560px 300px at 90% 10%, rgba(160,107,255,.13), transparent 60%),
     radial-gradient(700px 500px at 50% 110%, rgba(110,139,255,.08), transparent 60%);
-  background-attachment:fixed;
 }
 .wrap{max-width:640px;margin:0 auto;padding:20px 16px 64px}
 header.top{display:flex;align-items:center;gap:12px;padding:8px 4px 18px}
@@ -122,6 +121,15 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
     <div id="map"></div>
   </div>
 
+  <div class="sec-label">IP 类型识别</div>
+  <div class="card">
+    <div class="kv"><span class="k">🏢 机房 IP</span><span class="r"><span class="pill run" id="t_dc">检测中</span></span></div>
+    <div class="kv"><span class="k">🏠 住宅 IP</span><span class="r"><span class="pill run" id="t_home">检测中</span></span></div>
+    <div class="kv"><span class="k">🌱 原生 IP</span><span class="r"><span class="pill run" id="t_native">检测中</span></span></div>
+    <div class="kv"><span class="k">📡 广播 IP</span><span class="r"><span class="pill run" id="t_cast">检测中</span></span></div>
+    <div style="font-size:12px;color:var(--mut);margin-top:10px;line-height:1.7" id="t_note"></div>
+  </div>
+
   <div class="sec-label">纯洁度评分</div>
   <div class="card">
     <div class="score-wrap">
@@ -200,20 +208,33 @@ async function fetchJSON(url,opt,ms=9000){
     clearTimeout(t);return await r.json();}
   catch(e){clearTimeout(t);throw e;}
 }
-function initMap(){
-  if(typeof L==='undefined'||!S.lat||!S.lon){$('map').style.display='none';return;}
-  try{
-    const m=L.map('map',{zoomControl:false,scrollWheelZoom:false,attributionControl:true}).setView([S.lat,S.lon],9);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-      {subdomains:'abcd',maxZoom:19,attribution:'© OpenStreetMap · © CARTO'}).addTo(m);
-    const icon=L.divIcon({className:'pin-wrap',html:'<div class="pulse"></div><div class="dot"></div>',
-      iconSize:[40,40],iconAnchor:[20,20]});
-    L.marker([S.lat,S.lon],{icon}).addTo(m);
-    const chip=document.createElement('div');chip.className='map-chip';
-    chip.innerHTML='<b>'+esc(S.city||S.country||'未知位置')+'</b><span>'+S.lat.toFixed(2)+', '+S.lon.toFixed(2)+'</span>';
-    $('map').appendChild(chip);
-    setTimeout(()=>m.invalidateSize(),300);
-  }catch(e){$('map').style.display='none';}
+function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');
+s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
+function loadCSS(href){const l=document.createElement('link');l.rel='stylesheet';l.href=href;document.head.appendChild(l);}
+async function initMap(){
+  if(!S.lat||!S.lon){$('map').style.display='none';return;}
+  if(typeof L==='undefined'){
+    try{loadCSS('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css');
+    await loadScript('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js');}catch(e){}
+  }
+  if(typeof L!=='undefined'){
+    try{
+      const m=L.map('map',{zoomControl:false,scrollWheelZoom:false}).setView([S.lat,S.lon],9);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        {subdomains:'abcd',maxZoom:19,attribution:'© OpenStreetMap · © CARTO'}).addTo(m);
+      const icon=L.divIcon({className:'pin-wrap',html:'<div class="pulse"></div><div class="dot"></div>',
+        iconSize:[40,40],iconAnchor:[20,20]});
+      L.marker([S.lat,S.lon],{icon}).addTo(m);
+      const chip=document.createElement('div');chip.className='map-chip';
+      chip.innerHTML='<b>'+esc(S.city||S.country||'未知位置')+'</b><span>'+S.lat.toFixed(2)+', '+S.lon.toFixed(2)+'</span>';
+      $('map').appendChild(chip);
+      setTimeout(()=>m.invalidateSize(),300);
+      return;
+    }catch(e){}
+  }
+  const u='https://staticmap.openstreetmap.de/staticmap.php?center='+S.lat+','+S.lon+'&zoom=9&size=640x400&markers='+S.lat+','+S.lon+',red';
+  $('map').innerHTML='<img src="'+u+'" alt="位置地图" style="width:100%;height:100%;object-fit:cover;display:block" '+
+  'onerror="this.outerHTML=\'<div style=padding:60px 20px;text-align:center;color:#9aa3c7;font-size:13px\'>地图加载失败<br>'+S.lat.toFixed(2)+', '+S.lon.toFixed(2)+'</div>\'">';
 }
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function addDeduct(txt,pts,ok){S.deduct.push({txt,pts,ok});if(!ok)S.score=Math.max(0,S.score-pts);}
@@ -233,10 +254,38 @@ function renderScore(){
     '<li class="'+(d.ok?'ok':'')+'"><span>'+esc(d.txt)+'</span><b>'+(d.ok?'✓':'−'+d.pts)+'</b></li>').join('')
     :'<div class="none">暂无扣分项，IP 很干净</div>';
 }
-function checkISP(){
+const isDatacenter=()=>{const hay=(S.isp+' '+S.org+' '+S.asn).toLowerCase();
+return DC_KEY.some(k=>hay.includes(k));};
+const CC_WORDS={'hong kong':'HK','hongkong':'HK','singapore':'SG','japan':'JP','japanese':'JP','korea':'KR',
+'taiwan':'TW','united states':'US','america':'US','united kingdom':'UK','britain':'UK','england':'UK',
+'germany':'DE','netherlands':'NL','holland':'NL','france':'FR','canada':'CA','australia':'AU','russia':'RU',
+'india':'IN','brazil':'BR','ireland':'IE','sweden':'SE','norway':'NO','finland':'FI','switzerland':'CH',
+'austria':'AT','italy':'IT','spain':'ES','poland':'PL','romania':'RO','ukraine':'UA','turkey':'TR','israel':'IL',
+'saudi':'SA','emirates':'AE','egypt':'EG','south africa':'ZA','mexico':'MX','argentina':'AR','chile':'CL',
+'new zealand':'NZ','malaysia':'MY','thailand':'TH','vietnam':'VN','indonesia':'ID','philippines':'PH'};
+function setTypePill(id,yes,cls){const e=$(id);
+if(yes===null){e.className='pill unk';e.textContent='未知';}
+else if(yes){e.className='pill '+cls;e.textContent='是';}
+else{e.className='pill unk';e.textContent='否';}}
+function detectIPType(){
+const dc=isDatacenter();
+setTypePill('t_dc',dc,'warn');setTypePill('t_home',!dc,'ok');
 const hay=(S.isp+' '+S.org+' '+S.asn).toLowerCase();
-const dc=DC_KEY.some(k=>hay.includes(k));
-$('c_isp_v').textContent=dc?'机房 IP':'疑似住宅/ normal';
+let asnCC=null;for(const k in CC_WORDS){if(hay.includes(k)){asnCC=CC_WORDS[k];break;}}
+const geoCC=(S.cc||'').toUpperCase();
+let native=null;
+if(asnCC&&geoCC)native=(asnCC===geoCC);
+else if(!dc&&geoCC)native=true;
+if(native===true){setTypePill('t_native',true,'ok');setTypePill('t_cast',false,'unk');}
+else if(native===false){setTypePill('t_native',false,'unk');setTypePill('t_cast',true,'warn');
+addDeduct('广播IP（注册地'+asnCC+'≠使用地'+geoCC+'）',10);
+S.checks.nat='广播IP('+asnCC+'→'+geoCC+')，部分业务风控敏感，建议换原生IP';}
+else{setTypePill('t_native',null,'unk');setTypePill('t_cast',null,'unk');}
+$('t_note').textContent='机房/住宅看线路归属；原生=注册地与使用地一致，广播=不一致（如美区 ASN 的 IP 拿到别处用），后者部分严格风控会卡。';
+}
+function checkISP(){
+const dc=isDatacenter();
+$('c_isp_v').textContent=dc?'机房 IP':'住宅宽带';
 $('c_isp_d').textContent=(S.isp!=='—'?S.isp:S.org)+' · '+(S.asn||'');
 if(dc){setPill('c_isp_p','warn','机房线路');addDeduct('机房/云服务器 IP（'+(S.org||S.isp).slice(0,18)+'）',40);
 S.checks.isp='机房IP（'+S.org+'），很多风控会重点盯，建议换住宅IP';}
@@ -363,7 +412,7 @@ const t=new Date().toLocaleString('zh-CN',{hour12:false});
 const L=['','时间：'+t,'出口 IP：'+S.ip,
 '归属地：'+(S.city?S.city+' · ':'')+S.country,'运营商/组织：'+S.org,'ASN：'+S.asn,
 '纯洁度评分：'+S.score+'/100','---'];
-['isp','v6','rtc','bl','tz','lang','proxy','dev'].forEach(k=>{if(S.checks[k])L.push(S.checks[k]);});
+['isp','nat','v6','rtc','bl','tz','lang','proxy','dev'].forEach(k=>{if(S.checks[k])L.push(S.checks[k]);});
 if(S.ping.length)L.push('延迟：'+S.ping.join(' / '));
 L.push('---','结论：'+($('grade').textContent)+'。启发式评分，仅供参考。');
 return L.join('\n');
@@ -397,7 +446,7 @@ $('loc').textContent='📍 '+(S.city?S.city+' · ':'')+S.country+(S.tz?' · '+S.
 initMap();
 checkDevice();
 $('loadingTxt').textContent='正在深度检测…';
-checkISP();checkTZ();checkLang();
+checkISP();detectIPType();checkTZ();checkLang();
 await Promise.allSettled([checkV6(),checkRTC(),checkBL(),checkProxy(),checkPing()]);
 renderScore();
 $('loading').classList.add('hide');
