@@ -124,10 +124,13 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
 
   <div class="sec-label">IP 类型识别</div>
   <div class="card">
+    <div class="kv"><span class="k">🛰️ 数据源状态</span><span class="r" id="t_src" style="font-size:12px">待检测</span></div>
     <div class="kv"><span class="k">🏢 机房 IP</span><span class="r"><span class="pill unk" id="t_dc">待检测</span></span></div>
     <div class="kv"><span class="k">🏠 住宅 IP</span><span class="r"><span class="pill unk" id="t_home">待检测</span></span></div>
     <div class="kv"><span class="k">🌱 原生 IP</span><span class="r"><span class="pill unk" id="t_native">待检测</span></span></div>
     <div class="kv"><span class="k">📡 广播 IP</span><span class="r"><span class="pill unk" id="t_cast">待检测</span></span></div>
+    <div id="t_risk" style="margin-top:6px"></div>
+    <div class="kv"><span class="k">🔀 出口 IP 共识</span><span class="r" id="t_egress" style="font-size:12px">待检测</span></div>
     <div style="font-size:12px;color:var(--mut);margin-top:10px;line-height:1.7" id="t_note"></div>
   </div>
 
@@ -147,13 +150,15 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
       </div>
       <ul class="deduct" id="deduct"><div class="none">点击「开始检测」后逐项检查</div></ul>
     </div>
+    <button class="btn ghost" id="maskBtn" style="margin-top:12px">📋 复制脱敏报告（IP 打码）</button>
   </div>
 
   <div class="card">
     <h2><span class="em">📊</span>评分规则说明</h2>
     <div style="font-size:12.5px;color:var(--mut);line-height:1.9">
-      满分 100，按风险项扣分。扣分项：机房 IP −40 · 命中 Spamhaus 黑名单 −30 · WebRTC 泄漏 −15 · 透明代理 −10 · 广播 IP −10（与机房分互斥，不重复扣） · 时区 / 语言不一致各 −5。<br>
-      <b style="color:var(--warn)">查不到 ≠ 干净</b>：查询失败的项目不扣分，但会计入"未覆盖"，此时分数可能虚高，请看覆盖率提示。<br>
+      满分 100，按风险项扣分。扣分项：机房 IP −40 · 命中 Spamhaus 黑名单 −30 · IP 曾被标记滥用 −20 · WebRTC 泄漏 −15 · Tor 出口 −15 · 透明代理 −10 · 广播 IP −10（与机房分互斥，不重复扣） · 时区 / 语言不一致各 −5。<br>
+      归属地/ASN 由 ipapi.is、ipinfo.io、ipwho.is、Cloudflare 四源交叉验证；多源国家冲突判广播/Anycast 异常。<b style="color:var(--warn)">查不到 ≠ 干净</b>：查询失败的项目不扣分，但会计入"未覆盖"，此时分数可能虚高，请看覆盖率提示。<br>
+      ipapi.is 免费档不返回 is_datacenter 等风控字段时，机房识别降级为多源组织名关键词启发式，Tor/滥用标记显示未知。<br>
       ✓ 为通过项（事实），−分为风险提示（推断）。这是本站启发式参考分，<b style="color:var(--txt)">不代表任何平台的官方风控结果</b>。
     </div>
   </div>
@@ -167,6 +172,7 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
     <div class="cell"><div class="t">🕘 时区一致性</div><div class="v" id="c_tz_v">—</div><div class="d" id="c_tz_d"></div><span class="pill unk" id="c_tz_p">待检测</span></div>
     <div class="cell"><div class="t">🔤 语言一致性</div><div class="v" id="c_lang_v">—</div><div class="d" id="c_lang_d"></div><span class="pill unk" id="c_lang_p">待检测</span></div>
     <div class="cell"><div class="t">🕵️ 透明代理</div><div class="v" id="c_proxy_v">—</div><div class="d" id="c_proxy_d"></div><span class="pill unk" id="c_proxy_p">待检测</span></div>
+    <div class="cell"><div class="t">🧭 DNS 出口 (EDNS)</div><div class="v" id="c_edns_v">—</div><div class="d" id="c_edns_d"></div><span class="pill unk" id="c_edns_p">待检测</span></div>
   </div>
 
   <div class="sec-label">AI / 热门服务连通性</div>
@@ -204,7 +210,13 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
     <div class="kv"><span class="k">状态</span><span class="r"><span class="pill unk" id="mon_p">未监控</span></span></div>
     <div id="mon_hist"></div>
     <button class="btn ghost" id="monBtn" style="margin-top:12px">▶ 开始监控（每 30 秒查一次）</button>
-    <div style="font-size:12px;color:var(--mut);margin-top:8px">VPN 中途换节点是登录失败的常见原因。开着它再去登录，IP 变了会立刻提醒。</div>
+    <div style="font-size:12px;color:var(--mut);margin-top:8px">VPN 中途换节点是登录失败的常见原因。开着它再去登录，IP 变了会声音报警＋桌面通知。变动日志只记在当前页面，刷新清空。</div>
+  </div>
+
+  <div class="sec-label">本地节点历史</div>
+  <div class="card">
+    <div id="hist_list"><div style="font-size:12px;color:var(--mut)">暂无记录，每次检测会自动存一条（仅本机 localStorage，可清空）。</div></div>
+    <button class="btn ghost" id="histClear" style="margin-top:10px">🗑 清空历史</button>
   </div>
 
   <div class="card" style="margin-top:14px">
@@ -237,14 +249,62 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
     <div class="kv"><span class="k">🔬 浏览器泄漏全套件</span><span class="r"><a href="https://browserleaks.com" target="_blank" rel="noopener" style="font-size:13px;color:#aebbff">browserleaks.com →</a></span></div>
     <div class="kv"><span class="k">⚡ Cloudflare 测速</span><span class="r"><a href="https://speed.cloudflare.com" target="_blank" rel="noopener" style="font-size:13px;color:#aebbff">speed.cloudflare.com →</a></span></div>
   </div>
-  <p class="hint">检测在你的浏览器里运行，但以下请求会把你的 IP 暴露给对应服务：ipwho.is（查归属地）、Cloudflare DNS（查黑名单）、httpbin（查代理头）、icanhazip（查 IPv6 与延迟）、地图瓦片（OSM/谷歌/高德）、jsdelivr（测速）、12 个服务站点（连通性测试）。指纹仅本地计算展示，不上传。本站无账号系统，不存你的数据。<br>评分是启发式参考，不是官方风控结论。</p>
-  <footer>IP 纯洁度检测 v2.11 · 数据来源 ipwho.is / Spamhaus(via DoH) / httpbin / icanhazip<br>地图 © OpenStreetMap</footer>
+  <p class="hint">检测在你的浏览器里运行，但以下请求会把你的 IP 暴露给对应服务：api.ipapi.is / ipinfo.io / ipwho.is（归属地与 ASN 交叉验证）、Cloudflare trace（CDN 视角）、Cloudflare DNS（查黑名单）、httpbin（查代理头）、icanhazip（查 IPv6 与延迟）、edns.ip-api.com（DNS 出口）、地图瓦片（OSM/谷歌/高德）、jsdelivr（测速）、12 个服务站点（连通性测试）。指纹仅本地计算展示，不上传。本站无账号系统；节点历史仅存于本机 localStorage，可一键清空。<br>评分是启发式参考，不是官方风控结论。</p>
+  <footer>IP 纯洁度检测 v2.20 · 数据来源 ipapi.is / ipinfo.io / ipwho.is / Cloudflare / Spamhaus(via DoH) / httpbin / icanhazip / edns.ip-api.com<br>地图 © OpenStreetMap</footer>
 </div>
 <script>
 const $=id=>document.getElementById(id);
 const S={ip:'—',cc:'',country:'',city:'',lat:0,lon:0,isp:'—',org:'—',asn:'—',tz:'—',
-  score:100,deduct:[],checks:{},ua:'',ping:[],covered:{}};
-const COV_KEYS=['isp','type','v6','rtc','bl','tz','lang','proxy'];
+  score:100,deduct:[],checks:{},ua:'',ping:[],covered:{},srcA:null,srcB1:null,srcB2:null,srcC:null,
+  consensus:null,orgHay:'',risk:{}};
+const COV_KEYS=['isp','type','v6','rtc','bl','tz','lang','proxy','edns'];
+// 英文国名→代码（用于 ipapi.is / EDNS 的 country 名称比对；精确匹配，匹配不上判未知）
+const CC_EN={US:'United States',CN:'China',HK:'Hong Kong',TW:'Taiwan',MO:'Macao',GB:'United Kingdom',UK:'United Kingdom',JP:'Japan',KR:'Korea, Republic of',SG:'Singapore',MY:'Malaysia',TH:'Thailand',VN:'Vietnam',ID:'Indonesia',PH:'Philippines',IN:'India',AU:'Australia',NZ:'New Zealand',CA:'Canada',DE:'Germany',FR:'France',NL:'Netherlands',BE:'Belgium',IE:'Ireland',SE:'Sweden',NO:'Norway',FI:'Finland',DK:'Denmark',CH:'Switzerland',AT:'Austria',IT:'Italy',ES:'Spain',PT:'Portugal',PL:'Poland',CZ:'Czechia',RO:'Romania',UA:'Ukraine',RU:'Russian Federation',TR:'Turkey',IL:'Israel',AE:'United Arab Emirates',SA:'Saudi Arabia',EG:'Egypt',ZA:'South Africa',BR:'Brazil',MX:'Mexico',AR:'Argentina',CL:'Chile',CO:'Colombia'};
+function en2cc(name){if(!name)return null;const n=String(name).trim().toLowerCase();
+for(const cc in CC_EN){if(CC_EN[cc].toLowerCase()===n)return cc;}return null;}
+function expandV6(ip){ // 展开为 32 位 hex（不含冒号）
+let h=String(ip).split('::');let head=h[0]?h[0].split(':'):[],tail=h[1]?h[1].split(':'):[];
+const miss=8-head.length-tail.length;
+return head.concat(Array(miss).fill('0'),tail).map(x=>x.padStart(4,'0')).join('');}
+function maskIP(ip){ // 脱敏：v4 留前两段，v6 留前半段
+if(!ip||ip==='—')return '—';
+if(isV4(ip)){const p=ip.split('.');return p[0]+'.'+p[1]+'.*.*';}
+try{const g=expandV6(ip).match(/.{4}/g);return g.slice(0,4).join(':')+':*:*:*:*';}
+catch(e){return ip.slice(0,8)+'…';}}
+function parseTrace(txt){ // cloudflare cdn-cgi/trace 文本解析
+const o={};String(txt||'').split('\n').forEach(l=>{const m=l.match(/^(\w+)=(.*)$/);if(m)o[m[1]]=m[2].trim();});return o;}
+async function fetchSources(){ // v2.20：四源并发，单源 5 秒超时，allSettled 容错
+const T=5000;
+const get=(url,opt)=>fetchJSON(url,opt,T);
+const getTrace=async()=>{const c=new AbortController();const t=setTimeout(()=>c.abort(),T);
+try{const r=await fetch('https://www.cloudflare.com/cdn-cgi/trace',{signal:c.signal,cache:'no-store'});
+clearTimeout(t);return parseTrace(await r.text());}catch(e){clearTimeout(t);throw e;}};
+const rs=await Promise.allSettled([get('https://api.ipapi.is/'),get('https://ipinfo.io/json'),get('https://ipwho.is/'),getTrace()]);
+const A=rs[0].status==='fulfilled'?rs[0].value:null;
+const B1=rs[1].status==='fulfilled'?rs[1].value:null;
+const B2=(rs[2].status==='fulfilled'&&rs[2].value&&rs[2].value.success)?rs[2].value:null;
+const C=rs[3].status==='fulfilled'?rs[3].value:null;
+return {A,B1,B2,C,ok:{A:!!A,B1:!!B1,B2:!!B2,C:!!C}};
+}
+function buildConsensus(src){ // 出口 IP / 国家多源共识
+const ips=[];
+[['A',src.A&&src.A.ip],['B1',src.B1&&src.B1.ip],['B2',src.B2&&src.B2.ip],['C',src.C&&src.C.ip]]
+.forEach(([k,ip])=>{if(ip)ips.push({from:k,ip:String(ip).trim()});});
+const v4=ips.filter(x=>isV4(x.ip)),v6=ips.filter(x=>!isV4(x.ip));
+const u4=[...new Set(v4.map(x=>x.ip))],u6=[...new Set(v6.map(x=>x.ip))];
+const split=u4.length>1||u6.length>1; // 同协议族下多源出口不一致 = 分流/出口池
+const prio={B2:0,A:1,B1:2,C:3},cnt={};
+ips.forEach(x=>cnt[x.ip]=(cnt[x.ip]||0)+1);
+const sorted=ips.slice().sort((a,b)=>((cnt[b.ip]-cnt[a.ip])||(prio[a.from]-prio[b.from])));
+const ccs=[];
+if(src.A&&src.A.country){const cc=en2cc(src.A.country);if(cc)ccs.push({from:'A',cc});}
+if(src.B1&&src.B1.country)ccs.push({from:'B1',cc:String(src.B1.country).toUpperCase()});
+if(src.B2&&src.B2.country_code)ccs.push({from:'B2',cc:String(src.B2.country_code).toUpperCase()});
+if(src.C&&src.C.loc)ccs.push({from:'C',cc:String(src.C.loc).toUpperCase()});
+const ucc=[...new Set(ccs.map(x=>x.cc))];
+return {ips,u4,u6,split,primary:sorted[0]||null,ccs,ucc,
+country:ucc.length===1?ucc[0]:null,countryConflict:ucc.length>1};
+}
 const DC_KEY=['datacenter','data center','hosting','cloud','vps','server','compute','cdn','telecomunication',
   'choopa','constant','psychz','quadranet','cogent','digitalocean','vultr','linode','ovh','hetzner','aws','amazon',
   'google','microsoft','azure','alibaba','tencent','huawei','oracle','leaseweb','m247','datacamp','velia','31173',
@@ -356,8 +416,12 @@ function renderScore(){
     '<li class="'+(d.ok?'ok':'')+'"><span>'+esc(d.txt)+'</span><b>'+(d.ok?'✓':'−'+d.pts)+'</b></li>').join('')
     :'<div class="none">暂无扣分项，IP 很干净</div>');
 }
-const isDatacenter=()=>{const hay=(S.isp+' '+S.org+' '+S.asn).toLowerCase();
+const isDatacenter=()=>{const hay=(S.orgHay||(S.isp+' '+S.org+' '+S.asn)).toLowerCase();
 return DC_KEY.some(k=>hay.includes(k));};
+// ipapi.is 风控字段防御式解析（免费档可能不返回这些字段，缺失=未知，不伪造）
+function riskSignals(){const A=S.srcA||{};const b=k=>typeof A[k]==='boolean'?A[k]:null;
+return {dc:b('is_datacenter'),vpn:b('is_vpn'),proxy:b('is_proxy'),tor:b('is_tor'),abuser:b('is_abuser'),
+hasAny:['is_datacenter','is_vpn','is_proxy','is_tor','is_abuser'].some(k=>typeof A[k]==='boolean')};}
 const CC_WORDS={'hong kong':'HK','hongkong':'HK','china':'CN','chinese':'CN','china telecom':'CN','china unicom':'CN','china mobile':'CN',
 'singapore':'SG','japan':'JP','japanese':'JP','korea':'KR',
 'taiwan':'TW','united states':'US','america':'US','united kingdom':'UK','britain':'UK','england':'UK',
@@ -374,27 +438,45 @@ function detectIPType(){
 const dc=isDatacenter();
 setTypePill('t_dc',dc,'warn');setTypePill('t_home',!dc,'ok');
 S.covered.type=true;
-const hay=(S.isp+' '+S.org+' '+S.asn).toLowerCase();
+const cs=S.consensus,conflict=cs&&cs.countryConflict;
+const hay=(S.orgHay||'').toLowerCase();
 let asnCC=null;for(const k in CC_WORDS){if(hay.includes(k)){asnCC=CC_WORDS[k];break;}}
 const geoCC=(S.cc||'').toUpperCase();
-let native=null;
-if(asnCC&&geoCC)native=(asnCC===geoCC);
+let native=null,castReason='';
+if(conflict){ // 多源国家冲突 = Anycast/广播异常（v2.20 规则）
+native=false;castReason='多源定位国家冲突（'+cs.ucc.join('/')+'）';
+}else if(asnCC&&geoCC){native=(asnCC===geoCC);if(!native)castReason='ASN注册国'+asnCC+'≠定位国'+geoCC;}
 // 无ASN注册地证据时保持未知，不默认"原生"（原生≠住宅）
 if(native===true){setTypePill('t_native',true,'ok');setTypePill('t_cast',false,'unk');
-S.checks.nat='原生IP（ASN注册地'+asnCC+'=使用地'+geoCC+'）';}
+S.checks.nat='原生IP（ASN注册国'+asnCC+'=定位国'+geoCC+'，多源一致）';}
 else if(native===false){setTypePill('t_native',false,'unk');setTypePill('t_cast',true,'warn');
 // 与机房扣分互斥：已因机房扣分则不再重复扣，避免同一风险 double count
-if(!dc)addDeduct('广播IP（注册地'+asnCC+'≠使用地'+geoCC+'）',10);
-S.checks.nat='广播IP('+asnCC+'→'+geoCC+')，部分业务风控敏感，建议换原生IP';}
+if(!dc)addDeduct('广播IP（'+castReason+'）',10);
+S.checks.nat='广播IP/ AnyCast异常（'+castReason+'），部分业务风控敏感，建议换原生IP';}
 else{setTypePill('t_native',null,'unk');setTypePill('t_cast',null,'unk');
-S.checks.nat='原生/广播未知（缺少ASN注册地数据，不下结论）';}
-$('t_note').textContent='机房/住宅看线路归属；原生=ASN注册地与使用地一致，需两边数据齐全才判定，证据不足显示未知。';
+S.checks.nat='原生/广播未知（缺少ASN注册国数据，不下结论）';}
+$('t_note').textContent='机房/住宅看线路归属（多源组织名交叉）；原生=ASN注册国与定位国一致，需多源国家一致才判定，证据不足显示未知。ASN注册国为关键词启发式推断（免费数据源无该字段）。';
+renderRiskSignals();
+}
+function renderRiskSignals(){
+// 风控信号：有字段才判，无字段显示未知（免费档限制，如实标注）
+const r=S.risk,el=$('t_risk');
+if(!el)return;
+const row=(label,v)=>{
+const t=v===null?'<span class="pill unk">未知</span>':(v?'<span class="pill bad">是</span>':'<span class="pill ok">否</span>');
+return '<div class="kv"><span class="k">'+label+'</span><span class="r">'+t+'</span></div>';};
+el.innerHTML=row('🔀 VPN',r.vpn)+row('🧅 Tor 出口',r.tor)+row('🕵️ 已知代理',r.proxy)+row('⚠️ 曾被标记滥用',r.abuser)
++(r.hasAny?'':'<div style="font-size:11px;color:var(--mut);margin-top:6px">ipapi.is 免费档未返回风控字段，以上为未知</div>');
+if(r.tor===true)addDeduct('Tor 出口节点',15);
+if(r.abuser===true)addDeduct('IP 曾被标记为滥用源',20);
 }
 function checkISP(){
-const dc=isDatacenter();
+const r=S.risk;let dc,basis;
+if(r.dc!==null&&r.dc!==undefined){dc=r.dc;basis='ipapi.is 风控字段';}
+else{dc=isDatacenter();basis='关键词启发式';}
 S.covered.isp=true;
 $('c_isp_v').textContent=dc?'机房 IP':'住宅宽带';
-$('c_isp_d').textContent=(S.isp!=='—'?S.isp:S.org)+' · '+(S.asn||'');
+$('c_isp_d').textContent=(S.isp!=='—'?S.isp:S.org)+' · '+(S.asn||'')+'（'+basis+'）';
 if(dc){setPill('c_isp_p','warn','机房线路');addDeduct('机房/云服务器 IP（'+(S.org||S.isp).slice(0,18)+'）',40);
 S.checks.isp='机房IP（'+S.org+'），很多风控会重点盯，建议换住宅IP';}
 else{setPill('c_isp_p','ok','住宅/正常');addDeduct('非机房线路',0,true);S.checks.isp='非机房线路';}
@@ -434,22 +516,35 @@ try{pc.createDataChannel('t');pc.createOffer().then(o=>pc.setLocalDescription(o)
 setTimeout(()=>{try{pc.close();}catch(e){}res([...ips]);},ms||6000);
 });
 }
+function classifyCand(ip){ // v2.20：ICE 候选地址严格分类
+if(/\.local$/i.test(ip))return 'lan';
+if(isV4(ip))return isPrivateV4(ip)?'lan':'pub4';
+if(/^(fe80|fc00|fd00|::1$)/i.test(ip))return 'lan';
+return 'pub6';}
 async function checkRTC(){
 try{
 const ips=await rtcIPs(7000);
-const pub=ips.filter(ip=>!(isV4(ip)?isPrivateV4(ip):/^(fe80|fc00|fd00)/i.test(ip)));
-const leak=pub.filter(ip=>ip!==S.ip);
+const cls={lan:[],pub4:[],pub6:[]};
+ips.forEach(ip=>{cls[classifyCand(ip)].push(ip);});
+// 泄漏判定：公网 IP 且与任一数据源出口 IP 都不一致
+const exits=new Set((S.consensus?S.consensus.ips:[]).map(x=>x.ip));exits.add(S.ip);
+const leak=[...cls.pub4,...cls.pub6].filter(ip=>!exits.has(ip));
 S.covered.rtc=true;
-$('c_rtc_v').textContent=leak.length?('泄漏 '+leak.length+' 个'):'无泄漏';
-$('c_rtc_d').textContent=leak.length?('暴露 IP：'+leak.slice(0,2).join(', ')):'真实出口 IP 未被 WebRTC 暴露';
-if(leak.length){setPill('c_rtc_p','bad','已泄漏');addDeduct('WebRTC 暴露真实 IP',15);
+const stat='内网 '+cls.lan.length+' · 公网v4 '+cls.pub4.length+' · 公网v6 '+cls.pub6.length;
+if(leak.length){
+$('c_rtc_v').textContent='泄漏 '+leak.length+' 个';
+$('c_rtc_d').textContent=stat+' · 暴露：'+leak.slice(0,2).join(', ');
+setPill('c_rtc_p','bad','已泄漏');addDeduct('WebRTC 暴露真实 IP',15);
 S.checks.rtc='WebRTC泄漏('+leak[0]+')，浏览器装扩展禁用WebRTC或换浏览器';}
-else{setPill('c_rtc_p','ok','安全');addDeduct('WebRTC 无泄漏',0,true);S.checks.rtc='WebRTC无泄漏';}
+else{
+$('c_rtc_v').textContent=cls.pub4.length+cls.pub6.length?'无泄漏':'仅内网';
+$('c_rtc_d').textContent=stat+'（仅内网地址不算泄漏，不扣分）';
+setPill('c_rtc_p','ok','安全');addDeduct('WebRTC 无泄漏',0,true);S.checks.rtc='WebRTC无泄漏('+stat+')';}
 }catch(e){$('c_rtc_v').textContent='无法检测';setPill('c_rtc_p','unk','未知');S.checks.rtc='WebRTC未知';S.covered.rtc=true;}
 }
 async function checkBL(){
 // Spamhaus ZEN 经公共 DoH 查询：真命中返回 127.0.0.2~11；
-// 127.255.255.254 / "open resolver" 表示查询通道被 Spamhaus 拒绝（非命中）；
+// 127.255.255.252/.254/.255 或 "open resolver" 表示查询通道被 Spamhaus 拒绝（非命中），状态=未覆盖，不扣分；
 // NXDOMAIN（无 Answer）表示未收录。绝不能把通道被拒当成命中。
 const setUnknown=(d)=>{
 $('c_bl_v').textContent='未知';$('c_bl_d').textContent=d;
@@ -468,7 +563,7 @@ $('c_bl_d').textContent='Spamhaus ZEN 有收录（代码 127.0.0.'+code+'），�
 setPill('c_bl_p','bad','已收录');addDeduct('命中 Spamhaus 黑名单',30);
 S.checks.bl='命中Spamhaus黑名单(127.0.0.'+code+')，建议换IP';return;}
 }
-if(/127\.255\.255\.25[24]/.test(ans)||/open resolver|excessive/i.test(ans)){
+if(/127\.255\.255\.25[245]/.test(ans)||/open resolver|excessive/i.test(ans)){
 setUnknown('Spamhaus 拒绝公共 DNS 查询通道；可手动去 check.spamhaus.org 复查');return;}
 // NXDOMAIN / 无 Answer = 未收录
 $('c_bl_v').textContent='干净';$('c_bl_d').textContent='Spamhaus ZEN 无收录（仅代表该数据源）';
@@ -495,6 +590,37 @@ $('c_lang_d').textContent='IP 国家：'+zhCountry();
 if(ok){setPill('c_lang_p','ok','一致');addDeduct('语言一致',0,true);S.checks.lang='语言一致('+lang+')';}
 else{setPill('c_lang_p','warn','可疑');addDeduct('浏览器语言与 IP 国家不符',5);
 S.checks.lang='语言('+lang+')与IP国家('+S.cc+')不符，改浏览器语言';}
+}
+function renderSrcStatus(src){
+const ok=src.ok;
+const dot=(v)=>v?'<span style="color:var(--ok)">✓</span>':'<span style="color:var(--bad)">✗</span>';
+$('t_src').innerHTML='A(ipapi.is)'+dot(ok.A)+' · B1(ipinfo)'+dot(ok.B1)+' · B2(ipwho)'+dot(ok.B2)+' · C(CF)'+dot(ok.C);
+const cs=S.consensus;
+if(!cs||!cs.primary){$('t_egress').textContent='无可用数据源';return;}
+const parts=cs.ips.map(x=>x.from+':'+maskIP(x.ip));
+$('t_egress').innerHTML=esc(cs.primary.ip)+(cs.split?'<br><span style="color:var(--warn)">⚠️ 各源出口不一致（可能分流/出口池轮换）</span>':'<br><span style="color:var(--ok)">✓ 多源一致</span>')
++'<br><span style="color:var(--mut);font-size:11px">'+esc(parts.join(' · '))+'</span>';
+if(cs.split)S.checks.egress='多源出口IP不一致（'+cs.u4.concat(cs.u6).join('/')+'），疑似分流或出口池轮换';
+else S.checks.egress='多源出口IP一致（'+cs.primary.ip+'）';
+if(cs.countryConflict)S.checks.ccConflict='多源定位国家冲突（'+cs.ucc.join('/')+'），疑似Anycast';
+}
+async function checkEDNS(){
+// EDNS 泄漏初筛：看递归 DNS 出口与代理出口国家是否一致；失败则跳过
+try{
+const j=await fetchJSON('https://edns.ip-api.com/json',null,8000);
+S.covered.edns=true;
+const ip=j&&j.dns&&j.dns.ip,geo=j&&j.dns&&j.dns.geo;
+if(!ip){$('c_edns_v').textContent='无数据';setPill('c_edns_p','unk','未知');S.checks.edns='EDNS无数据';return;}
+let ecc=null;if(geo)ecc=en2cc(String(geo).split(' - ')[0]);
+$('c_edns_v').textContent=ip;
+$('c_edns_d').textContent='归属：'+(geo||'未知');
+if(ecc&&S.cc){
+if(ecc===S.cc){setPill('c_edns_p','ok','一致');S.checks.edns='EDNS一致（DNS出口'+ecc+'=代理出口'+S.cc+'）';}
+else{setPill('c_edns_p','warn','疑似泄漏');S.checks.edns='疑似DNS泄漏（DNS出口'+ecc+'≠代理出口'+S.cc+'），去dnsleaktest.com复查';}
+}else{setPill('c_edns_p','unk','未知');S.checks.edns='EDNS未知（归属地无法比对：'+ip+'）';}
+}catch(e){S.covered.edns=true;
+$('c_edns_v').textContent='检测失败';$('c_edns_d').textContent='接口超时或被拦截，已跳过';
+setPill('c_edns_p','unk','未知');S.checks.edns='EDNS未知（查询失败）';}
 }
 async function checkProxy(){
 // 透明代理会在请求头里留下 Via / X-Forwarded-For 等痕迹
@@ -548,14 +674,58 @@ $('pingRows').innerHTML=rows.map(r=>
 '<div class="kv"><span class="k">'+esc(r.name)+'</span><span class="r">'+
 (r.ms==='—'?'—':r.ms+' ms')+'</span></div>').join('');
 }
+const HIST_KEY='ipcheck_hist_v220';
+function loadHist(){try{return JSON.parse(localStorage.getItem(HIST_KEY))||[];}catch(e){return[];}}
+function saveHistRaw(h){try{localStorage.setItem(HIST_KEY,JSON.stringify(h.slice(0,30)));}catch(e){}}
+function saveHistory(){ // 每次检测存一条（脱敏后，本地 localStorage）
+const h=loadHist();
+h.unshift({t:Date.now(),ip:maskIP(S.ip),cc:S.cc||'',loc:zhLoc(),
+org:String(S.org||S.isp||'').slice(0,24),asn:S.asn||'',score:S.score,
+grade:$('grade').textContent||''});
+saveHistRaw(h);
+}
+function renderHistory(){
+const h=loadHist(),el=$('hist_list');if(!el)return;
+const cur=maskIP(S.ip);
+if(!h.length){el.innerHTML='<div style="font-size:12px;color:var(--mut)">暂无记录，每次检测会自动存一条（仅本机 localStorage，可清空）。</div>';return;}
+el.innerHTML=h.map((e,i)=>{
+const d=new Date(e.t),ts=d.toLocaleDateString('zh-CN')+' '+d.toLocaleTimeString('zh-CN',{hour12:false});
+const cur2=e.ip===cur&&i===0;
+return '<div class="kv"><span class="k" style="font-size:12px">'+ts+'</span>'
++'<span class="r" style="font-size:12px">'+esc(e.ip)+' · '+esc(e.loc)+' · '+e.score+'分'
++(cur2?' <span class="pill ok" style="margin:0">当前</span>':'')+'</span></div>';}).join('');
+}
+function buildMaskedReport(){ // v2.20：一键复制脱敏报告
+const t=new Date().toLocaleString('zh-CN',{hour12:false});
+const dc=isDatacenter();
+const natTxt=$('t_native').textContent==='是'?'原生 IP':($('t_cast').textContent==='是'?'广播 IP':'类型未知');
+const okm=x=>x?'✓':'✗';
+const L=['【IP 纯洁度检测报告】（脱敏版）',
+'📍 出口 IP: '+maskIP(S.ip)+' ('+(S.cc||'?')+' · '+zhLoc()+')',
+'🏢 运营商/ASN: '+S.asn+' '+String(S.org||'').slice(0,20)+'（'+(dc?'机房 IP':'住宅 IP')+' / '+natTxt+'）',
+'🛡️ 纯洁度评分: '+S.score+' / 100（'+($('grade').textContent||'')+'，覆盖 '+COV_KEYS.filter(k=>S.covered[k]).length+'/'+COV_KEYS.length+' 项）',
+'🔍 深度扫描: WebRTC '+($('c_rtc_p').textContent)+' | 时区 '+($('c_tz_p').textContent)+' | 语言 '+($('c_lang_p').textContent)+' | 透明代理 '+($('c_proxy_p').textContent)+' | 黑名单 '+($('c_bl_p').textContent),
+'🤖 连通性: '+(S.checks.svc||'未测试'),
+'⏰ 检测时间: '+t,
+'ℹ️ 数据来源: ipapi.is / ipinfo.io / ipwho.is / Cloudflare trace / Spamhaus(DoH)',
+'结论：启发式评分，仅供参考，不代表任何平台官方风控结果。'];
+return L.join('\n');
+}
+async function copyText(txt,btn,okTxt){
+try{await navigator.clipboard.writeText(txt);btn.textContent=okTxt;}
+catch(e){const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);
+ta.select();try{document.execCommand('copy');btn.textContent=okTxt;}catch(_){}
+ta.remove();}
+setTimeout(()=>{btn.textContent=btn.dataset.label||btn.textContent;},2500);
+}
 function buildReport(){
 const t=new Date().toLocaleString('zh-CN',{hour12:false});
 const L=['','时间：'+t,'出口 IP：'+S.ip,
 '归属地：'+zhLoc(),'运营商/组织：'+S.org,'ASN：'+S.asn,
 '纯洁度评分：'+S.score+'/100','---'];
-['isp','nat','v6','rtc','bl','tz','lang','proxy','dev','speed','mon','svc'].forEach(k=>{if(S.checks[k])L.push(S.checks[k]);});
+['isp','nat','v6','rtc','bl','tz','lang','proxy','edns','egress','ccConflict','dev','speed','mon','svc'].forEach(k=>{if(S.checks[k])L.push(S.checks[k]);});
 if(S.ping.length)L.push('延迟：'+S.ping.join(' / '));
-L.push('---','数据来源：ipwho.is（归属地）/ Spamhaus ZEN via Cloudflare DoH（黑名单）/ httpbin（代理头）/ icanhazip（IPv6）',
+L.push('---','数据来源：ipapi.is / ipinfo.io / ipwho.is（归属地交叉）/ Cloudflare trace（CDN视角）/ Spamhaus ZEN via DoH（黑名单）/ httpbin（代理头）/ icanhazip（IPv6）/ edns.ip-api.com（DNS出口）',
 '结论：'+($('grade').textContent)+'。启发式评分，仅供参考，不代表任何平台官方风控结果。');
 return L.join('\n');
 }
@@ -652,52 +822,92 @@ S.checks.speed='下载速度 '+mbps.toFixed(1)+'Mbps';
 }catch(e){$('speedV').textContent='测速失败';$('speedD').textContent='文件下载失败，换个网络试试';}
 btn.disabled=false;btn.textContent='↻ 重新测速';
 }
-let monTimer=null,monCount=0;
+let monTimer=null,monCount=0;const monLog=[];
+function monBeep(){ // v2.20：Web Audio 双频"滴滴"报警，无需外部音频文件
+try{
+const Ctx=window.AudioContext||window.webkitAudioContext;if(!Ctx)return;
+const ctx=new Ctx();
+[[880,0],[659,0.22]].forEach(([f,dt])=>{
+const o=ctx.createOscillator(),g=ctx.createGain();
+o.type='sine';o.frequency.value=f;
+const t0=ctx.currentTime+dt;
+g.gain.setValueAtTime(0.0001,t0);
+g.gain.exponentialRampToValueAtTime(0.4,t0+0.02);
+g.gain.exponentialRampToValueAtTime(0.0001,t0+0.18);
+o.connect(g);g.connect(ctx.destination);o.start(t0);o.stop(t0+0.2);});
+setTimeout(()=>{try{ctx.close();}catch(e){}},900);
+}catch(e){}}
+function monNotify(title,body){ // v2.20：桌面通知（需用户授权）
+try{if('Notification' in window&&Notification.permission==='granted')new Notification(title,{body});}catch(e){}}
+function monAddLog(msg){ // v2.20：带时间戳的变动日志（只记当前页面，刷新清空）
+const t=new Date().toLocaleTimeString('zh-CN',{hour12:false});
+monLog.unshift({t,msg});if(monLog.length>20)monLog.pop();
+$('mon_hist').innerHTML=monLog.map(e=>'<div class="kv"><span class="k">'+e.t+'</span><span class="r" style="font-size:11px">'+esc(e.msg)+'</span></div>').join('');
+}
 async function toggleMonitor(){
 const btn=$('monBtn');
 if(monTimer){clearInterval(monTimer);monTimer=null;btn.textContent='▶ 开始监控（每 30 秒查一次）';setPill('mon_p','unk','已停止');return;}
 btn.textContent='⏹ 停止监控';
 setPill('mon_p','run','<span class="spin"></span>监控中');
 $('mon_v').textContent=S.ip;
+monLog.length=0;$('mon_hist').innerHTML='';
+monAddLog('开始监控，基准 IP '+S.ip);
+if('Notification' in window&&Notification.permission==='default'){Notification.requestPermission();}
 const check=async()=>{
 try{
 const j=await fetchJSON('https://ipwho.is/',null,10000);
 const nip=j&&j.ip;
-if(nip&&nip!==S.ip){
+if(!nip){monAddLog('网络断开或查询失败');return;}
+if(nip!==S.ip){
 monCount++;
-const t=new Date().toLocaleTimeString('zh-CN',{hour12:false});
-const hist=$('mon_hist');
-const row=document.createElement('div');row.className='kv';
-row.innerHTML='<span class="k">'+t+'</span><span class="r" style="font-size:11px">'+esc(S.ip+' → '+nip)+'</span>';
-hist.insertBefore(row,hist.firstChild);
-while(hist.children.length>5)hist.removeChild(hist.lastChild);
+monAddLog('IP 变化：'+S.ip+' → '+nip);
 S.ip=nip;$('mon_v').textContent=nip;$('ip').textContent=nip;
 setPill('mon_p','bad','IP 变化 '+monCount+' 次');
+monBeep();monNotify('⚠️ 出口 IP 变化',S.ip+' → '+nip);
 showToast('⚠️ 出口 IP 变化了！');
 S.checks.mon='监控中 IP 变化 '+monCount+' 次';
 }
-}catch(e){}
+}catch(e){monAddLog('网络断开或查询失败');}
 };
 monTimer=setInterval(check,30000);
 check();
 }
 let started=false;
+function fillFromSources(src){ // v2.20：多源共识填充 S（B2 优先，逐级 fallback）
+const cs=buildConsensus(src);
+S.srcA=src.A;S.srcB1=src.B1;S.srcB2=src.B2;S.srcC=src.C;S.consensus=cs;S.risk=riskSignals();
+if(!cs.primary)return false;
+const A=src.A||{},B1=src.B1||{},B2=src.B2||{},C=src.C||{};
+S.ip=cs.primary.ip;
+S.cc=cs.country||(B2.country_code||B1.country||'');
+S.country=B2.country||A.country||'';
+S.city=B2.city||B1.city||A.city||'';
+S.lat=B2.latitude||A.lat||0;S.lon=B2.longitude||A.lon||0;
+if(!S.lat&&B1.loc){const p=String(B1.loc).split(',');S.lat=+p[0]||0;S.lon=+p[1]||0;}
+const conn=B2.connection||{};
+S.isp=conn.isp||'—';S.org=conn.org||S.isp;
+S.asn=conn.asn?('AS'+conn.asn):'—';
+if(A.asn&&S.asn==='—'){const m=String(A.asn).match(/^AS(\d+)\s*(.*)$/);if(m){S.asn='AS'+m[1];if(S.org==='—'||!S.org)S.org=m[2]||S.org;}}
+S.tz=(B2.timezone&&B2.timezone.id)||B1.timezone||A.timezone||'';
+// 多源组织名字符串（机房关键词/ASN注册国启发式用）
+S.orgHay=[conn.isp,conn.org,S.asn,A.asn,A.company,B1.org].filter(Boolean).join(' ');
+return true;
+}
 async function main(){
 if(started)return;started=true;
 S.score=100;S.deduct=[];S.checks={};S.ping=[];S.covered={};
+S.srcA=S.srcB1=S.srcB2=S.srcC=null;S.consensus=null;S.risk={};
 const btn=$('startBtn');btn.disabled=true;btn.textContent='⏳ 检测中…';btn.style.opacity='.7';
-['c_isp_p','c_v6_p','c_rtc_p','c_bl_p','c_tz_p','c_lang_p','c_proxy_p'].forEach(runPill);
+['c_isp_p','c_v6_p','c_rtc_p','c_bl_p','c_tz_p','c_lang_p','c_proxy_p','c_edns_p'].forEach(runPill);
 ['t_dc','t_home','t_native','t_cast'].forEach(id=>{const e=$(id);e.className='pill run';e.innerHTML='<span class="spin"></span>检测中';});
+$('t_src').textContent='多源并发查询中…';$('t_egress').textContent='…';$('t_risk').innerHTML='';
 $('deduct').innerHTML='<div class="none">正在逐项检查…</div>';
 try{
-const j=await fetchJSON('https://ipwho.is/',null,10000);
-if(!j.success)throw 0;
-S.ip=j.ip||'—';S.cc=j.country_code||'';S.country=j.country||'';S.city=j.city||'';
-S.lat=j.latitude||0;S.lon=j.longitude||0;
-S.isp=j.connection&&j.connection.isp||'—';S.org=j.connection&&j.connection.org||S.isp;
-S.asn=j.connection&&j.connection.asn?'AS'+j.connection.asn:'—';S.tz=(j.timezone&&j.timezone.id)||'';
+const src=await fetchSources();
+if(!fillFromSources(src))throw 0;
+renderSrcStatus(src);
 }catch(e){
-$('ip').textContent='查询失败';$('loc').textContent='网络异常，点下方按钮重试';
+$('ip').textContent='查询失败';$('loc').textContent='四个数据源全部不可达，点下方按钮重试';
 btn.disabled=false;btn.textContent='🚀 重新检测';btn.style.opacity='1';started=false;
 return;
 }
@@ -707,8 +917,8 @@ $('map').style.display='block';
 initMap();
 checkDevice();fillFingerprint();
 checkISP();detectIPType();checkTZ();checkLang();
-await Promise.allSettled([checkV6(),checkRTC(),checkBL(),checkProxy(),checkPing()]);
-renderScore();
+await Promise.allSettled([checkV6(),checkRTC(),checkBL(),checkProxy(),checkEDNS(),checkPing()]);
+renderScore();saveHistory();renderHistory();
 btn.disabled=false;btn.textContent='↻ 重新检测';btn.style.opacity='1';started=false;
 }
 document.addEventListener('DOMContentLoaded',()=>{
@@ -716,14 +926,11 @@ $('startBtn').onclick=main;
 $('monBtn').onclick=toggleMonitor;
 $('speedBtn').onclick=speedTest;
 $('svcBtn').onclick=svcTest;
-$('copyBtn').onclick=async()=>{
-const txt=buildReport();
-try{await navigator.clipboard.writeText(txt);$('copyBtn').textContent='✅ 已复制，去粘贴吧';}
-catch(e){const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);
-ta.select();try{document.execCommand('copy');$('copyBtn').textContent='✅ 已复制，去粘贴吧';}catch(_){}
-ta.remove();}
-setTimeout(()=>$('copyBtn').textContent='📋 一键复制检测报告',2500);
-};
+$('copyBtn').dataset.label='📋 一键复制检测报告';
+$('copyBtn').onclick=async()=>{await copyText(buildReport(),$('copyBtn'),'✅ 已复制，去粘贴吧');};
+const mb=$('maskBtn');if(mb){mb.dataset.label='📋 复制脱敏报告（IP 打码）';mb.onclick=async()=>{await copyText(buildMaskedReport(),mb,'✅ 脱敏报告已复制');};}
+const hc=$('histClear');if(hc){hc.onclick=()=>{saveHistRaw([]);renderHistory();showToast('历史已清空');};}
+renderHistory();
 $('ip').onclick=()=>{
 if(!S.ip||S.ip==='—')return;
 const done=()=>showToast('已复制 '+S.ip);
