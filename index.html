@@ -228,8 +228,8 @@ if(i<srcs.length){el.dataset.i=i;el.src=srcs[i];}
 else{el.dataset.dead='1';el.style.opacity='0';}
 }
 function renderVectorCard(){
-const city=esc(S.city||S.country||'\u672a\u77e5\u4f4d\u7f6e');
-const sub=esc((S.country||'')+' \u00b7 '+(S.lat&&S.lon?S.lat.toFixed(2)+', '+S.lon.toFixed(2):'\u5750\u6807\u672a\u77e5'));
+const city=esc(zhLoc());
+const sub=esc(S.tz||'');
 $('map').innerHTML='<div style="position:relative;width:100%;height:100%;min-height:250px;overflow:hidden;background:'+
 'radial-gradient(420px 260px at 50% 42%,rgba(110,139,255,.14),transparent 70%),#0b1020;display:flex;flex-direction:column;'+
 'align-items:center;justify-content:center;gap:6px;padding:20px;text-align:center">'+
@@ -258,7 +258,7 @@ imgs+='<img src="'+srcs[0]+'" data-i="0" data-srcs="'+srcs.join('|')+'" style="w
 $('map').innerHTML='<div style="position:relative;width:100%;height:100%;overflow:hidden;background:#0b1020">'+
 '<div style="display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);width:100%;height:100%;filter:invert(92%) hue-rotate(180deg) saturate(.7)">'+imgs+'</div>'+
 '<div style="position:absolute;left:'+pinL+'%;top:'+pinT+'%;transform:translate(-50%,-50%)"><div class="pin-wrap"><div class="pulse"></div><div class="dot"></div></div></div>'+
-'<div class="map-chip"><b>'+esc(S.city||S.country||'\u672a\u77e5\u4f4d\u7f6e')+'</b><span>'+lat.toFixed(2)+', '+lon.toFixed(2)+'</span></div>'+
+'<div class="map-chip"><b>'+esc(zhLoc())+'</b><span>'+lat.toFixed(2)+', '+lon.toFixed(2)+'</span></div>'+
 '<div style="position:absolute;right:8px;bottom:8px;font-size:9px;color:#889">\u00a9 OpenStreetMap</div></div>';
 setTimeout(function(){
 const mapEl=$('map');if(!mapEl||!mapEl.querySelector('img'))return;
@@ -271,6 +271,9 @@ if(!S.lat||!S.lon){renderVectorCard();return;}
 renderMap(S.lat,S.lon);
 }
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+const CC_ZH={'CN':'中国','HK':'香港','TW':'台湾','MO':'澳门','US':'美国','GB':'英国','UK':'英国','JP':'日本','KR':'韩国','KP':'朝鲜','SG':'新加坡','MY':'马来西亚','TH':'泰国','VN':'越南','ID':'印度尼西亚','PH':'菲律宾','IN':'印度','AU':'澳大利亚','NZ':'新西兰','CA':'加拿大','DE':'德国','FR':'法国','NL':'荷兰','BE':'比利时','IE':'爱尔兰','SE':'瑞典','NO':'挪威','FI':'芬兰','DK':'丹麦','CH':'瑞士','AT':'奥地利','IT':'意大利','ES':'西班牙','PT':'葡萄牙','PL':'波兰','CZ':'捷克','RO':'罗马尼亚','UA':'乌克兰','RU':'俄罗斯','TR':'土耳其','IL':'以色列','AE':'阿联酋','SA':'沙特阿拉伯','EG':'埃及','ZA':'南非','BR':'巴西','MX':'墨西哥','AR':'阿根廷','CL':'智利','CO':'哥伦比亚'};
+function zhCountry(){return CC_ZH[(S.cc||'').toUpperCase()]||S.country||'未知';}
+function zhLoc(){return zhCountry()+(S.city?' · '+S.city:'');}
 function addDeduct(txt,pts,ok){S.deduct.push({txt,pts,ok});if(!ok)S.score=Math.max(0,S.score-pts);}
 function renderScore(){
   const C=402.1,off=C*(1-S.score/100);
@@ -393,7 +396,7 @@ const lang=(navigator.language||'未知');
 $('c_lang_v').textContent=lang;
 const cc=(S.cc||'').toLowerCase(),lc=lang.toLowerCase();
 const ok=cc&&lc.includes(cc);
-$('c_lang_d').textContent='IP 国家：'+(S.country||'未知');
+$('c_lang_d').textContent='IP 国家：'+zhCountry();
 if(ok){setPill('c_lang_p','ok','一致');addDeduct('语言一致',0,true);S.checks.lang='语言一致('+lang+')';}
 else{setPill('c_lang_p','warn','可疑');addDeduct('浏览器语言与 IP 国家不符',5);
 S.checks.lang='语言('+lang+')与IP国家('+S.cc+')不符，改浏览器语言';}
@@ -444,7 +447,7 @@ $('pingRows').innerHTML=rows.map(r=>
 function buildReport(){
 const t=new Date().toLocaleString('zh-CN',{hour12:false});
 const L=['','时间：'+t,'出口 IP：'+S.ip,
-'归属地：'+(S.city?S.city+' · ':'')+S.country,'运营商/组织：'+S.org,'ASN：'+S.asn,
+'归属地：'+zhLoc(),'运营商/组织：'+S.org,'ASN：'+S.asn,
 '纯洁度评分：'+S.score+'/100','---'];
 ['isp','nat','v6','rtc','bl','tz','lang','proxy','dev'].forEach(k=>{if(S.checks[k])L.push(S.checks[k]);});
 if(S.ping.length)L.push('延迟：'+S.ping.join(' / '));
@@ -472,7 +475,7 @@ btn.disabled=false;btn.textContent='🚀 重新检测';btn.style.opacity='1';sta
 return;
 }
 $('ip').textContent=S.ip;
-$('loc').textContent='📍 '+(S.city?S.city+' · ':'')+S.country+(S.tz?' · '+S.tz:'');
+$('loc').textContent='📍 '+zhLoc()+(S.tz?' · '+S.tz:'');
 $('map').style.display='block';
 initMap();
 checkDevice();
