@@ -99,6 +99,12 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
 
 
 @media(max-width:380px){.grid{grid-template-columns:1fr}.hero-ip{font-size:25px}}
+@media(max-width:460px){.score-wrap{flex-direction:column}.ring{margin:0 auto}.deduct{width:100%}}
+.toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:rgba(20,26,48,.95);
+  border:1px solid var(--line);color:var(--txt);font-size:13px;padding:10px 18px;border-radius:999px;
+  opacity:0;pointer-events:none;transition:opacity .3s;z-index:1000}
+.toast.show{opacity:1}
+.hero-ip{cursor:pointer}
 </style>
 </head>
 <body>
@@ -111,7 +117,7 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
   <div class="card">
     <h2><span class="em">📍</span>你的出口位置</h2>
     <div class="hero-ip" id="ip">—</div>
-    <div><span class="hero-loc" id="loc">点击下方按钮开始检测</span></div>
+    <div><span class="hero-loc" id="loc">定位中…</span></div>
     <div id="map" style="display:none"></div>
     <button class="btn" id="startBtn" style="margin-top:14px">🚀 开始检测</button>
   </div>
@@ -171,7 +177,6 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
   </div>
 
   <button class="btn" id="copyBtn">📋 一键复制检测报告</button>
-  <button class="btn ghost" id="retryBtn">↻ 重新检测</button>
   <p class="hint">检测全部在你浏览器本地完成，不上传任何数据。<br>评分是启发式参考，不是官方风控结论。</p>
   <footer>IP 纯洁度检测 v2.0 · 数据来源 ipwho.is / Spamhaus / httpbin<br>地图 © OpenStreetMap · © CARTO</footer>
 </div>
@@ -209,25 +214,61 @@ const r=lat*Math.PI/180;
 const yf=(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n;
 return [xf,yf];
 }
+function tileSrcs(x,y,z){
+return [
+'https://a.basemaps.cartocdn.com/dark_all/'+z+'/'+x+'/'+y+'.png',
+'https://tile.openstreetmap.org/'+z+'/'+x+'/'+y+'.png',
+'https://mt0.google.com/vt/lyrs=m&x='+x+'&y='+y+'&z='+z,
+'https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x='+x+'&y='+y+'&z='+z
+];
+}
+function tileErr(el){
+const srcs=el.dataset.srcs.split('|');
+let i=(+el.dataset.i||0)+1;
+if(i<srcs.length){el.dataset.i=i;el.src=srcs[i];}
+else{el.dataset.dead='1';el.style.opacity='0';}
+}
+function renderVectorCard(){
+const city=esc(S.city||S.country||'\u672a\u77e5\u4f4d\u7f6e');
+const sub=esc((S.country||'')+' \u00b7 '+(S.lat&&S.lon?S.lat.toFixed(2)+', '+S.lon.toFixed(2):'\u5750\u6807\u672a\u77e5'));
+$('map').innerHTML='<div style="position:relative;width:100%;height:100%;min-height:250px;overflow:hidden;background:'+
+'radial-gradient(420px 260px at 50% 42%,rgba(110,139,255,.14),transparent 70%),#0b1020;display:flex;flex-direction:column;'+
+'align-items:center;justify-content:center;gap:6px;padding:20px;text-align:center">'+
+'<svg width="110" height="110" viewBox="0 0 120 120">'+
+'<circle cx="60" cy="60" r="52" fill="none" stroke="rgba(110,139,255,.22)" stroke-width="1"/>'+
+'<circle cx="60" cy="60" r="36" fill="none" stroke="rgba(110,139,255,.34)" stroke-width="1"/>'+
+'<circle cx="60" cy="60" r="20" fill="none" stroke="rgba(160,107,255,.5)" stroke-width="1"/>'+
+'<line x1="60" y1="4" x2="60" y2="116" stroke="rgba(110,139,255,.18)"/>'+
+'<line x1="4" y1="60" x2="116" y2="60" stroke="rgba(110,139,255,.18)"/>'+
+'<circle cx="60" cy="60" r="7" fill="#a06bff">'+
+'<animate attributeName="r" values="7;11;7" dur="2s" repeatCount="indefinite"/>'+
+'<animate attributeName="opacity" values="1;.55;1" dur="2s" repeatCount="indefinite"/></circle></svg>'+
+'<div style="font-size:19px;font-weight:800">'+city+'</div>'+
+'<div style="font-size:12px;color:#9aa3c7">'+sub+'</div>'+
+'<div style="font-size:11px;color:#5c6488">\u5730\u56fe\u74e6\u7247\u88ab\u7f51\u7edc\u62e6\u622a\uff0c\u663e\u793a\u793a\u610f\u4f4d\u7f6e</div></div>';
+}
 function renderMap(lat,lon){
 const z=10,xy=tileXY(lat,lon,z),cx=Math.floor(xy[0]),cy=Math.floor(xy[1]);
 const fx=xy[0]-cx,fy=xy[1]-cy;
 const pinL=((1+fx)/3*100).toFixed(2),pinT=((1+fy)/3*100).toFixed(2);
 let imgs='';
 for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++){
-const dark='https://a.basemaps.cartocdn.com/dark_all/'+z+'/'+(cx+i)+'/'+(cy+j)+'.png';
-const osm='https://tile.openstreetmap.org/'+z+'/'+(cx+i)+'/'+(cy+j)+'.png';
-imgs+='<img src="'+dark+'" data-osm="'+osm+'" style="width:100%;height:100%;object-fit:cover" loading="lazy" '+
-'onerror="if(!this.dataset.sw){this.dataset.sw=1;this.src=this.dataset.osm;}else{this.style.opacity=0;}">';
+const srcs=tileSrcs(cx+i,cy+j,z);
+imgs+='<img src="'+srcs[0]+'" data-i="0" data-srcs="'+srcs.join('|')+'" style="width:100%;height:100%;object-fit:cover" loading="lazy" onerror="tileErr(this)">';
 }
 $('map').innerHTML='<div style="position:relative;width:100%;height:100%;overflow:hidden;background:#0b1020">'+
 '<div style="display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);width:100%;height:100%">'+imgs+'</div>'+
 '<div style="position:absolute;left:'+pinL+'%;top:'+pinT+'%;transform:translate(-50%,-50%)"><div class="pin-wrap"><div class="pulse"></div><div class="dot"></div></div></div>'+
 '<div class="map-chip"><b>'+esc(S.city||S.country||'\u672a\u77e5\u4f4d\u7f6e')+'</b><span>'+lat.toFixed(2)+', '+lon.toFixed(2)+'</span></div>'+
 '<div style="position:absolute;right:8px;bottom:8px;font-size:9px;color:#667">\u00a9 OpenStreetMap \u00b7 \u00a9 CARTO</div></div>';
+setTimeout(function(){
+const mapEl=$('map');if(!mapEl||!mapEl.querySelector('img'))return;
+let ok=0;mapEl.querySelectorAll('img').forEach(function(im){if(im.complete&&im.naturalWidth>0&&!im.dataset.dead)ok++;});
+if(ok<4)renderVectorCard();
+},9000);
 }
 function initMap(){
-if(!S.lat||!S.lon){$('map').style.display='none';return;}
+if(!S.lat||!S.lon){renderVectorCard();return;}
 renderMap(S.lat,S.lon);
 }
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
@@ -414,6 +455,7 @@ return L.join('\n');
 let started=false;
 async function main(){
 if(started)return;started=true;
+S.score=100;S.deduct=[];S.checks={};S.ping=[];
 const btn=$('startBtn');btn.disabled=true;btn.textContent='⏳ 检测中…';btn.style.opacity='.7';
 ['c_isp_p','c_v6_p','c_rtc_p','c_bl_p','c_tz_p','c_lang_p'].forEach(runPill);
 ['t_dc','t_home','t_native','t_cast'].forEach(id=>{const e=$(id);e.className='pill run';e.innerHTML='<span class="spin"></span>检测中';});
@@ -442,7 +484,6 @@ btn.disabled=false;btn.textContent='↻ 重新检测';btn.style.opacity='1';star
 }
 document.addEventListener('DOMContentLoaded',()=>{
 $('startBtn').onclick=main;
-$('retryBtn').onclick=()=>location.reload();
 $('copyBtn').onclick=async()=>{
 const txt=buildReport();
 try{await navigator.clipboard.writeText(txt);$('copyBtn').textContent='✅ 已复制，去粘贴吧';}
@@ -451,7 +492,24 @@ ta.select();try{document.execCommand('copy');$('copyBtn').textContent='✅ 已�
 ta.remove();}
 setTimeout(()=>$('copyBtn').textContent='📋 一键复制检测报告',2500);
 };
+$('ip').onclick=()=>{
+if(!S.ip||S.ip==='—')return;
+const done=()=>showToast('已复制 '+S.ip);
+if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(S.ip).then(done).catch(()=>fallbackCopyIP(done));}
+else fallbackCopyIP(done);
+};
+main();
 });
+function fallbackCopyIP(done){
+const ta=document.createElement('textarea');ta.value=S.ip;document.body.appendChild(ta);
+ta.select();try{document.execCommand('copy');done();}catch(e){}ta.remove();
+}
+function showToast(msg){
+let t=document.querySelector('.toast');
+if(!t){t=document.createElement('div');t.className='toast';document.body.appendChild(t);}
+t.textContent=msg;t.classList.add('show');
+clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove('show'),1800);
+}
 </script>
 </body>
 </html>
