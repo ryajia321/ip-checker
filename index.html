@@ -165,6 +165,14 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
     <div class="kv"><span class="k">🟠 Claude</span><span class="r"><span class="pill unk" id="s_claude">待检测</span> <a href="https://claude.ai" target="_blank" rel="noopener" style="font-size:12px;color:#aebbff;margin-left:6px">前往验证 →</a></span></div>
     <div class="kv"><span class="k">🎵 TikTok</span><span class="r"><span class="pill unk" id="s_tiktok">待检测</span> <a href="https://www.tiktok.com" target="_blank" rel="noopener" style="font-size:12px;color:#aebbff;margin-left:6px">前往验证 →</a></span></div>
     <div class="kv"><span class="k">🔵 Gemini</span><span class="r"><span class="pill unk" id="s_gemini">待检测</span> <a href="https://gemini.google.com" target="_blank" rel="noopener" style="font-size:12px;color:#aebbff;margin-left:6px">前往验证 →</a></span></div>
+    <div class="kv"><span class="k">🔍 Google</span><span class="r"><span class="pill unk" id="s_google">待检测</span> <a href="https://www.google.com" target="_blank" rel="noopener" style="font-size:12px;color:#aebbff;margin-left:6px">前往验证 →</a></span></div>
+    <div class="kv"><span class="k">📺 YouTube</span><span class="r"><span class="pill unk" id="s_youtube">待检测</span> <a href="https://www.youtube.com" target="_blank" rel="noopener" style="font-size:12px;color:#aebbff;margin-left:6px">前往验证 →</a></span></div>
+    <div class="kv"><span class="k">✖️ X (Twitter)</span><span class="r"><span class="pill unk" id="s_x">待检测</span> <a href="https://x.com" target="_blank" rel="noopener" style="font-size:12px;color:#aebbff;margin-left:6px">前往验证 →</a></span></div>
+    <div class="kv"><span class="k">📸 Instagram</span><span class="r"><span class="pill unk" id="s_instagram">待检测</span> <a href="https://www.instagram.com" target="_blank" rel="noopener" style="font-size:12px;color:#aebbff;margin-left:6px">前往验证 →</a></span></div>
+    <div class="kv"><span class="k">🎮 Discord</span><span class="r"><span class="pill unk" id="s_discord">待检测</span> <a href="https://discord.com" target="_blank" rel="noopener" style="font-size:12px;color:#aebbff;margin-left:6px">前往验证 →</a></span></div>
+    <div class="kv"><span class="k">✈️ Telegram</span><span class="r"><span class="pill unk" id="s_telegram">待检测</span> <a href="https://web.telegram.org" target="_blank" rel="noopener" style="font-size:12px;color:#aebbff;margin-left:6px">前往验证 →</a></span></div>
+    <div class="kv"><span class="k">🍿 Netflix</span><span class="r"><span class="pill unk" id="s_netflix">待检测</span> <a href="https://www.netflix.com" target="_blank" rel="noopener" style="font-size:12px;color:#aebbff;margin-left:6px">前往验证 →</a></span></div>
+    <div class="kv"><span class="k">🪟 Copilot</span><span class="r"><span class="pill unk" id="s_copilot">待检测</span> <a href="https://copilot.microsoft.com" target="_blank" rel="noopener" style="font-size:12px;color:#aebbff;margin-left:6px">前往验证 →</a></span></div>
     <button class="btn ghost" id="svcBtn" style="margin-top:10px">🌐 测试服务连通性</button>
     <div style="font-size:12px;color:var(--mut);margin-top:8px">只能测"连不连得上"。连上了≠能用（如 ChatGPT 可能提示地区不可用），点右侧链接进去亲眼确认。</div>
   </div>
@@ -543,7 +551,15 @@ const SVC=[
 ['s_gpt','https://chatgpt.com/','ChatGPT'],
 ['s_claude','https://claude.ai/','Claude'],
 ['s_tiktok','https://www.tiktok.com/','TikTok'],
-['s_gemini','https://gemini.google.com/','Gemini']
+['s_gemini','https://gemini.google.com/','Gemini'],
+['s_google','https://www.google.com/','Google'],
+['s_youtube','https://www.youtube.com/','YouTube'],
+['s_x','https://x.com/','X'],
+['s_instagram','https://www.instagram.com/','Instagram'],
+['s_discord','https://discord.com/','Discord'],
+['s_telegram','https://web.telegram.org/','Telegram'],
+['s_netflix','https://www.netflix.com/','Netflix'],
+['s_copilot','https://copilot.microsoft.com/','Copilot']
 ];
 async function svcTest(){
 const btn=$('svcBtn');btn.disabled=true;btn.textContent='测试中…';
