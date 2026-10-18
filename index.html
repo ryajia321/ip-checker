@@ -207,33 +207,59 @@ async function fetchJSON(url,opt,ms=9000){
     clearTimeout(t);return await r.json();}
   catch(e){clearTimeout(t);throw e;}
 }
-function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');
-s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
-function loadCSS(href){const l=document.createElement('link');l.rel='stylesheet';l.href=href;document.head.appendChild(l);}
+function tileXY(lat,lon,z){
+const n=Math.pow(2,z);
+const x=Math.floor((lon+180)/360*n);
+const r=lat*Math.PI/180;
+const y=Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n);
+return [x,y];
+}
+function staticGridHTML(lat,lon){
+const z=10,xy=tileXY(lat,lon,z),cx=xy[0],cy=xy[1];
+let imgs='';
+for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++){
+const dark='https://a.basemaps.cartocdn.com/dark_all/'+z+'/'+(cx+i)+'/'+(cy+j)+'.png';
+const osm='https://tile.openstreetmap.org/'+z+'/'+(cx+i)+'/'+(cy+j)+'.png';
+imgs+='<img src="'+dark+'" data-osm="'+osm+'" style="width:100%;height:100%;object-fit:cover" loading="lazy" '+
+'onerror="if(!this.dataset.sw){this.dataset.sw=1;this.src=this.dataset.osm;}else{this.style.opacity=0;}">';
+}
+return '<div style="position:relative;width:100%;height:100%;overflow:hidden;background:#0b1020">'+
+'<div style="display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);width:100%;height:100%">'+imgs+'</div>'+
+'<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)"><div class="pin-wrap"><div class="pulse"></div><div class="dot"></div></div></div>'+
+'<div class="map-chip"><b>'+esc(S.city||S.country||'未知位置')+'</b><span>'+lat.toFixed(2)+', '+lon.toFixed(2)+'</span></div>'+
+'<div style="position:absolute;right:8px;bottom:8px;font-size:9px;color:#667">© OpenStreetMap · © CARTO</div></div>';
+}
 async function initMap(){
-  if(!S.lat||!S.lon){$('map').style.display='none';return;}
-  if(typeof L==='undefined'){
-    try{loadCSS('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css');
-    await loadScript('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js');}catch(e){}
-  }
-  if(typeof L!=='undefined'){
-    try{
-      const m=L.map('map',{zoomControl:false,scrollWheelZoom:false}).setView([S.lat,S.lon],9);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-        {subdomains:'abcd',maxZoom:19,attribution:'© OpenStreetMap · © CARTO'}).addTo(m);
-      const icon=L.divIcon({className:'pin-wrap',html:'<div class="pulse"></div><div class="dot"></div>',
-        iconSize:[40,40],iconAnchor:[20,20]});
-      L.marker([S.lat,S.lon],{icon}).addTo(m);
-      const chip=document.createElement('div');chip.className='map-chip';
-      chip.innerHTML='<b>'+esc(S.city||S.country||'未知位置')+'</b><span>'+S.lat.toFixed(2)+', '+S.lon.toFixed(2)+'</span>';
-      $('map').appendChild(chip);
-      setTimeout(()=>m.invalidateSize(),300);
-      return;
-    }catch(e){}
-  }
-  const u='https://staticmap.openstreetmap.de/staticmap.php?center='+S.lat+','+S.lon+'&zoom=9&size=640x400&markers='+S.lat+','+S.lon+',red';
-  $('map').innerHTML='<img src="'+u+'" alt="位置地图" style="width:100%;height:100%;object-fit:cover;display:block" '+
-  'onerror="this.outerHTML=\'<div style=padding:60px 20px;text-align:center;color:#9aa3c7;font-size:13px\'>地图加载失败<br>'+S.lat.toFixed(2)+', '+S.lon.toFixed(2)+'</div>\'">';
+const mapEl=$('map');
+if(!S.lat||!S.lon){mapEl.style.display='none';return;}
+mapEl.innerHTML='<div style="height:100%;min-height:250px;display:flex;align-items:center;justify-content:center;color:#9aa3c7;font-size:13px">🗺️ 地图加载中…</div>';
+if(typeof L==='undefined'){
+try{loadCSS('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css');
+await loadScript('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js');}catch(e){}
+}
+if(typeof L==='undefined'){
+try{await loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js');}catch(e){}
+}
+if(typeof L!=='undefined'){
+try{
+mapEl.innerHTML='';
+const m=L.map('map',{zoomControl:false,scrollWheelZoom:false}).setView([S.lat,S.lon],10);
+const layer=L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+{subdomains:'abcd',maxZoom:19,attribution:'© OpenStreetMap · © CARTO'});
+let errs=0,switched=false;
+layer.on('tileerror',()=>{if(++errs>6&&!switched){switched=true;layer.setUrl('https://tile.openstreetmap.org/{z}/{x}/{y}.png');}});
+layer.addTo(m);
+const icon=L.divIcon({className:'pin-wrap',html:'<div class="pulse"></div><div class="dot"></div>',
+iconSize:[40,40],iconAnchor:[20,20]});
+L.marker([S.lat,S.lon],{icon}).addTo(m);
+const chip=document.createElement('div');chip.className='map-chip';
+chip.innerHTML='<b>'+esc(S.city||S.country||'未知位置')+'</b><span>'+S.lat.toFixed(2)+', '+S.lon.toFixed(2)+'</span>';
+mapEl.appendChild(chip);
+setTimeout(()=>m.invalidateSize(),300);
+return;
+}catch(e){}
+}
+mapEl.innerHTML=staticGridHTML(S.lat,S.lon);
 }
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function addDeduct(txt,pts,ok){S.deduct.push({txt,pts,ok});if(!ok)S.score=Math.max(0,S.score-pts);}
