@@ -105,6 +105,12 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
   opacity:0;pointer-events:none;transition:opacity .3s;z-index:1000}
 .toast.show{opacity:1}
 .hero-ip{cursor:pointer}
+.htab{width:100%;border-collapse:collapse;font-size:12px;min-width:560px}
+.htab th,.htab td{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.07);text-align:left;white-space:nowrap}
+.htab th{color:var(--mut);font-weight:600;font-size:11px;letter-spacing:1px}
+.htab tr.best td{background:rgba(52,211,153,.08)}
+.htab .sc{font-weight:800;font-size:14px}
+.htab .tag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(52,211,153,.15);color:var(--ok);border:1px solid rgba(52,211,153,.4);margin-left:6px}
 </style>
 </head>
 <body>
@@ -213,10 +219,17 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
     <div style="font-size:12px;color:var(--mut);margin-top:8px">VPN 中途换节点是登录失败的常见原因。开着它再去登录，IP 变了会声音报警＋桌面通知。变动日志只记在当前页面，刷新清空。</div>
   </div>
 
-  <div class="sec-label">本地节点历史</div>
+  <div class="sec-label">历史节点对比</div>
   <div class="card">
-    <div id="hist_list"><div style="font-size:12px;color:var(--mut)">暂无记录，每次检测会自动存一条（仅本机 localStorage，可清空）。</div></div>
-    <button class="btn ghost" id="histClear" style="margin-top:10px">🗑 清空历史</button>
+    <h2><span class="em">📊</span>历史节点横向对比 <span style="font-size:11px;color:var(--mut);font-weight:400">最近5条 · 仅存本机</span></h2>
+    <div style="overflow-x:auto">
+      <table class="htab" id="hist_table" style="display:none">
+        <thead><tr><th>时间</th><th>脱敏 IP</th><th>国家</th><th>类型</th><th>评分</th><th>平均延迟</th></tr></thead>
+        <tbody id="hist_body"></tbody>
+      </table>
+    </div>
+    <div id="hist_empty" style="font-size:12px;color:var(--mut)">暂无记录。每次检测自动存一条，切换代理节点后在这里对比哪条线路更干净。</div>
+    <button class="btn ghost" id="histClear" style="margin-top:10px">🗑 清空记录</button>
   </div>
 
   <div class="card" style="margin-top:14px">
@@ -250,7 +263,7 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
     <div class="kv"><span class="k">⚡ Cloudflare 测速</span><span class="r"><a href="https://speed.cloudflare.com" target="_blank" rel="noopener" style="font-size:13px;color:#aebbff">speed.cloudflare.com →</a></span></div>
   </div>
   <p class="hint">检测在你的浏览器里运行，但以下请求会把你的 IP 暴露给对应服务：api.ipapi.is / ipinfo.io / ipwho.is（归属地与 ASN 交叉验证）、Cloudflare trace（CDN 视角）、Cloudflare DNS（查黑名单）、httpbin（查代理头）、icanhazip（查 IPv6 与延迟）、edns.ip-api.com（DNS 出口）、地图瓦片（OSM/谷歌/高德）、jsdelivr（测速）、12 个服务站点（连通性测试）。指纹仅本地计算展示，不上传。本站无账号系统；节点历史仅存于本机 localStorage，可一键清空。<br>评分是启发式参考，不是官方风控结论。</p>
-  <footer>IP 纯洁度检测 v2.20 · 数据来源 ipapi.is / ipinfo.io / ipwho.is / Cloudflare / Spamhaus(via DoH) / httpbin / icanhazip / edns.ip-api.com<br>地图 © OpenStreetMap</footer>
+  <footer>IP 纯洁度检测 v2.21 · 数据来源 ipapi.is / ipinfo.io / ipwho.is / Cloudflare / Spamhaus(via DoH) / httpbin / icanhazip / edns.ip-api.com<br>地图 © OpenStreetMap</footer>
 </div>
 <script>
 const $=id=>document.getElementById(id);
@@ -570,6 +583,7 @@ $('c_bl_v').textContent='干净';$('c_bl_d').textContent='Spamhaus ZEN 无收录
 setPill('c_bl_p','ok','未收录');addDeduct('黑名单干净',0,true);S.checks.bl='黑名单干净(Spamhaus ZEN)';
 }catch(e){setUnknown('DoH 查询超时或失败');}
 }
+const LANG_SUGGEST={US:'en-US',CN:'zh-CN',HK:'zh-HK',TW:'zh-TW',MO:'zh-MO',JP:'ja-JP',KR:'ko-KR',SG:'en-SG',MY:'ms-MY',TH:'th-TH',VN:'vi-VN',ID:'id-ID',PH:'en-PH',IN:'en-IN',AU:'en-AU',NZ:'en-NZ',CA:'en-CA',GB:'en-GB',DE:'de-DE',FR:'fr-FR',NL:'nl-NL',RU:'ru-RU'};
 function checkTZ(){
 const btz=Intl.DateTimeFormat().resolvedOptions().timeZone||'未知';
 S.covered.tz=true;
@@ -578,6 +592,7 @@ const ok=S.tz&&btz&&btz.toLowerCase()===String(S.tz).toLowerCase();
 $('c_tz_d').textContent='IP 属地时区：'+(S.tz||'未知');
 if(ok){setPill('c_tz_p','ok','一致');addDeduct('时区一致',0,true);S.checks.tz='时区一致('+btz+')';}
 else{setPill('c_tz_p','warn','不一致');addDeduct('浏览器时区与 IP 属地不符',5);
+$('c_tz_d').innerHTML='IP 属地时区：'+esc(S.tz||'未知')+'<br><span style="color:var(--warn)">修复建议：浏览器时区 '+esc(btz)+' ≠ IP 时区 '+esc(S.tz||'未知')+'，去系统设置或防关联浏览器里把时区改成 IP 属地时区</span>';
 S.checks.tz='时区不一致(浏览器'+btz+'≠IP'+S.tz+')，把系统时区改成IP属地';}
 }
 function checkLang(){
@@ -589,6 +604,8 @@ const ok=cc&&lc.includes(cc);
 $('c_lang_d').textContent='IP 国家：'+zhCountry();
 if(ok){setPill('c_lang_p','ok','一致');addDeduct('语言一致',0,true);S.checks.lang='语言一致('+lang+')';}
 else{setPill('c_lang_p','warn','可疑');addDeduct('浏览器语言与 IP 国家不符',5);
+const sug=LANG_SUGGEST[(S.cc||'').toUpperCase()]||'与 IP 国家一致的语言';
+$('c_lang_d').innerHTML='IP 国家：'+esc(zhCountry())+'<br><span style="color:var(--warn)">修复建议：浏览器语言 '+esc(lang)+' 与 IP 国家不符，在浏览器设置里把首选语言改为 '+esc(sug)+'（并对齐 Accept-Language）</span>';
 S.checks.lang='语言('+lang+')与IP国家('+S.cc+')不符，改浏览器语言';}
 }
 function renderSrcStatus(src){
@@ -674,26 +691,31 @@ $('pingRows').innerHTML=rows.map(r=>
 '<div class="kv"><span class="k">'+esc(r.name)+'</span><span class="r">'+
 (r.ms==='—'?'—':r.ms+' ms')+'</span></div>').join('');
 }
-const HIST_KEY='ipcheck_hist_v220';
+const HIST_KEY='ipcheck_hist_v2';
 function loadHist(){try{return JSON.parse(localStorage.getItem(HIST_KEY))||[];}catch(e){return[];}}
-function saveHistRaw(h){try{localStorage.setItem(HIST_KEY,JSON.stringify(h.slice(0,30)));}catch(e){}}
-function saveHistory(){ // 每次检测存一条（脱敏后，本地 localStorage）
+function saveHistRaw(h){try{localStorage.setItem(HIST_KEY,JSON.stringify(h.slice(0,5)));}catch(e){}}
+function avgPing(){ // 平均延迟（毫秒），无数据返回'—'
+const ms=S.ping.map(s=>{const m=String(s).match(/:(\d+)ms/);return m?+m[1]:null;}).filter(v=>v!==null);
+return ms.length?Math.round(ms.reduce((a,b)=>a+b,0)/ms.length)+'ms':'—';}
+function nodeTypeStr(){ // 机房/住宅 + 原生/广播/未知
+const dc=$('t_dc').textContent==='是'?'机房':'住宅';
+const nat=$('t_native').textContent==='是'?'原生':($('t_cast').textContent==='是'?'广播':'未知');
+return dc+'/'+nat;}
+function saveHistory(){ // 每次检测存一条（脱敏，本地 localStorage，最多5条）
 const h=loadHist();
-h.unshift({t:Date.now(),ip:maskIP(S.ip),cc:S.cc||'',loc:zhLoc(),
-org:String(S.org||S.isp||'').slice(0,24),asn:S.asn||'',score:S.score,
-grade:$('grade').textContent||''});
+h.unshift({t:Date.now(),ip:maskIP(S.ip),cc:S.cc||'',loc:zhLoc(),type:nodeTypeStr(),score:S.score,ping:avgPing()});
 saveHistRaw(h);
 }
 function renderHistory(){
-const h=loadHist(),el=$('hist_list');if(!el)return;
-const cur=maskIP(S.ip);
-if(!h.length){el.innerHTML='<div style="font-size:12px;color:var(--mut)">暂无记录，每次检测会自动存一条（仅本机 localStorage，可清空）。</div>';return;}
-el.innerHTML=h.map((e,i)=>{
-const d=new Date(e.t),ts=d.toLocaleDateString('zh-CN')+' '+d.toLocaleTimeString('zh-CN',{hour12:false});
-const cur2=e.ip===cur&&i===0;
-return '<div class="kv"><span class="k" style="font-size:12px">'+ts+'</span>'
-+'<span class="r" style="font-size:12px">'+esc(e.ip)+' · '+esc(e.loc)+' · '+e.score+'分'
-+(cur2?' <span class="pill ok" style="margin:0">当前</span>':'')+'</span></div>';}).join('');
+const h=loadHist(),tab=$('hist_table'),body=$('hist_body'),emp=$('hist_empty');
+if(!tab||!body)return;
+if(!h.length){tab.style.display='none';emp.style.display='block';return;}
+tab.style.display='table';emp.style.display='none';
+const best=Math.max(...h.map(e=>e.score));
+body.innerHTML=h.map(e=>{
+const d=new Date(e.t),ts=(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+return '<tr class="'+(e.score===best?'best':'')+'"><td>'+ts+'</td><td style="font-family:monospace">'+esc(e.ip)+'</td><td>'+esc(e.loc)+'</td><td>'+esc(e.type)+'</td>'
++'<td><span class="sc">'+e.score+'</span>'+(e.score===best?'<span class="tag">最干净</span>':'')+'</td><td>'+esc(e.ping)+'</td></tr>';}).join('');
 }
 function buildMaskedReport(){ // v2.20：一键复制脱敏报告
 const t=new Date().toLocaleString('zh-CN',{hour12:false});
@@ -930,6 +952,7 @@ $('copyBtn').dataset.label='📋 一键复制检测报告';
 $('copyBtn').onclick=async()=>{await copyText(buildReport(),$('copyBtn'),'✅ 已复制，去粘贴吧');};
 const mb=$('maskBtn');if(mb){mb.dataset.label='📋 复制脱敏报告（IP 打码）';mb.onclick=async()=>{await copyText(buildMaskedReport(),mb,'✅ 脱敏报告已复制');};}
 const hc=$('histClear');if(hc){hc.onclick=()=>{saveHistRaw([]);renderHistory();showToast('历史已清空');};}
+try{localStorage.removeItem('ipcheck_hist_v220');}catch(e){}
 renderHistory();
 $('ip').onclick=()=>{
 if(!S.ip||S.ip==='—')return;
