@@ -149,14 +149,24 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
     </div>
   </div>
 
+  <div class="card">
+    <h2><span class="em">📊</span>评分规则说明</h2>
+    <div style="font-size:12.5px;color:var(--mut);line-height:1.9">
+      满分 100，按风险项扣分。扣分项：机房 IP −40 · 命中 Spamhaus 黑名单 −30 · WebRTC 泄漏 −15 · 透明代理 −10 · 广播 IP −10（与机房分互斥，不重复扣） · 时区 / 语言不一致各 −5。<br>
+      <b style="color:var(--warn)">查不到 ≠ 干净</b>：查询失败的项目不扣分，但会计入"未覆盖"，此时分数可能虚高，请看覆盖率提示。<br>
+      ✓ 为通过项（事实），−分为风险提示（推断）。这是本站启发式参考分，<b style="color:var(--txt)">不代表任何平台的官方风控结果</b>。
+    </div>
+  </div>
+
   <div class="sec-label">深度检测</div>
   <div class="grid">
     <div class="cell"><div class="t">🏢 运营商 / 机房</div><div class="v" id="c_isp_v">—</div><div class="d" id="c_isp_d"></div><span class="pill unk" id="c_isp_p">待检测</span></div>
     <div class="cell"><div class="t">🌐 IPv6 支持</div><div class="v" id="c_v6_v">—</div><div class="d" id="c_v6_d"></div><span class="pill unk" id="c_v6_p">待检测</span></div>
     <div class="cell"><div class="t">🕸️ WebRTC 泄漏</div><div class="v" id="c_rtc_v">—</div><div class="d" id="c_rtc_d"></div><span class="pill unk" id="c_rtc_p">待检测</span></div>
-    <div class="cell"><div class="t">🚫 黑名单 (Spamhaus)</div><div class="v" id="c_bl_v">—</div><div class="d" id="c_bl_d"></div><span class="pill unk" id="c_bl_p">待检测</span></div>
+    <div class="cell"><div class="t">🚫 黑名单 (Spamhaus)</div><div class="v" id="c_bl_v">—</div><div class="d" id="c_bl_d">经公共 DNS 查询，通道可能被拒</div><span class="pill unk" id="c_bl_p">待检测</span></div>
     <div class="cell"><div class="t">🕘 时区一致性</div><div class="v" id="c_tz_v">—</div><div class="d" id="c_tz_d"></div><span class="pill unk" id="c_tz_p">待检测</span></div>
     <div class="cell"><div class="t">🔤 语言一致性</div><div class="v" id="c_lang_v">—</div><div class="d" id="c_lang_d"></div><span class="pill unk" id="c_lang_p">待检测</span></div>
+    <div class="cell"><div class="t">🕵️ 透明代理</div><div class="v" id="c_proxy_v">—</div><div class="d" id="c_proxy_d"></div><span class="pill unk" id="c_proxy_p">待检测</span></div>
   </div>
 
   <div class="sec-label">AI / 热门服务连通性</div>
@@ -174,7 +184,7 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
     <div class="kv"><span class="k">🍿 Netflix</span><span class="r"><span class="pill unk" id="s_netflix">待检测</span> <a href="https://www.netflix.com" target="_blank" rel="noopener" style="font-size:12px;color:#aebbff;margin-left:6px">前往验证 →</a></span></div>
     <div class="kv"><span class="k">🪟 Copilot</span><span class="r"><span class="pill unk" id="s_copilot">待检测</span> <a href="https://copilot.microsoft.com" target="_blank" rel="noopener" style="font-size:12px;color:#aebbff;margin-left:6px">前往验证 →</a></span></div>
     <button class="btn ghost" id="svcBtn" style="margin-top:10px">🌐 测试服务连通性</button>
-    <div style="font-size:12px;color:var(--mut);margin-top:8px">只能测"连不连得上"。连上了≠能用（如 ChatGPT 可能提示地区不可用），点右侧链接进去亲眼确认。</div>
+    <div style="font-size:12px;color:var(--mut);margin-top:8px">只能测"连不连得上"。连上了≠能用（如 ChatGPT 可能提示地区不可用），单次失败也不代表服务整体不可用，点右侧链接进去亲眼确认。</div>
   </div>
 
   <div class="sec-label">浏览器指纹</div>
@@ -223,16 +233,18 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
   <div class="card">
     <div class="kv"><span class="k">🔍 DNS 泄漏深度测试</span><span class="r"><a href="https://www.dnsleaktest.com" target="_blank" rel="noopener" style="font-size:13px;color:#aebbff">dnsleaktest.com →</a></span></div>
     <div class="kv"><span class="k">🛡️ 综合匿名度评分</span><span class="r"><a href="https://whoer.net" target="_blank" rel="noopener" style="font-size:13px;color:#aebbff">whoer.net →</a></span></div>
+    <div class="kv"><span class="k">📋 黑名单手动复查</span><span class="r"><a href="https://check.spamhaus.org/" target="_blank" rel="noopener" style="font-size:13px;color:#aebbff">check.spamhaus.org →</a></span></div>
     <div class="kv"><span class="k">🔬 浏览器泄漏全套件</span><span class="r"><a href="https://browserleaks.com" target="_blank" rel="noopener" style="font-size:13px;color:#aebbff">browserleaks.com →</a></span></div>
     <div class="kv"><span class="k">⚡ Cloudflare 测速</span><span class="r"><a href="https://speed.cloudflare.com" target="_blank" rel="noopener" style="font-size:13px;color:#aebbff">speed.cloudflare.com →</a></span></div>
   </div>
-  <p class="hint">检测全部在你浏览器本地完成，不上传任何数据。<br>评分是启发式参考，不是官方风控结论。</p>
-  <footer>IP 纯洁度检测 v2.0 · 数据来源 ipwho.is / Spamhaus / httpbin<br>地图 © OpenStreetMap</footer>
+  <p class="hint">检测在你的浏览器里运行，但以下请求会把你的 IP 暴露给对应服务：ipwho.is（查归属地）、Cloudflare DNS（查黑名单）、httpbin（查代理头）、icanhazip（查 IPv6 与延迟）、地图瓦片（OSM/谷歌/高德）、jsdelivr（测速）、12 个服务站点（连通性测试）。指纹仅本地计算展示，不上传。本站无账号系统，不存你的数据。<br>评分是启发式参考，不是官方风控结论。</p>
+  <footer>IP 纯洁度检测 v2.11 · 数据来源 ipwho.is / Spamhaus(via DoH) / httpbin / icanhazip<br>地图 © OpenStreetMap</footer>
 </div>
 <script>
 const $=id=>document.getElementById(id);
 const S={ip:'—',cc:'',country:'',city:'',lat:0,lon:0,isp:'—',org:'—',asn:'—',tz:'—',
-  score:100,deduct:[],checks:{},ua:'',ping:[]};
+  score:100,deduct:[],checks:{},ua:'',ping:[],covered:{}};
+const COV_KEYS=['isp','type','v6','rtc','bl','tz','lang','proxy'];
 const DC_KEY=['datacenter','data center','hosting','cloud','vps','server','compute','cdn','telecomunication',
   'choopa','constant','psychz','quadranet','cogent','digitalocean','vultr','linode','ovh','hetzner','aws','amazon',
   'google','microsoft','azure','alibaba','tencent','huawei','oracle','leaseweb','m247','datacamp','velia','31173',
@@ -336,9 +348,13 @@ function renderScore(){
   else if(S.score>=50){g.className='grade g-warn';g.textContent='一般';}
   else{g.className='grade g-bad';g.textContent='较脏';}
   const ul=$('deduct');
-  ul.innerHTML=S.deduct.length?S.deduct.map(d=>
+  const done=COV_KEYS.filter(k=>S.covered[k]).length;
+  const covHtml='<div style="font-size:12px;color:var(--mut);padding:8px 0;border-bottom:1px dashed rgba(255,255,255,.08);margin-bottom:4px">'
+    +'核心检测覆盖 '+done+'/'+COV_KEYS.length+' 项'
+    +(done<COV_KEYS.length?'<br><span style="color:var(--warn)">⚠️ 有项目未能完成：查不到≠干净，分数可能虚高</span>':'')+'</div>';
+  ul.innerHTML=covHtml+(S.deduct.length?S.deduct.map(d=>
     '<li class="'+(d.ok?'ok':'')+'"><span>'+esc(d.txt)+'</span><b>'+(d.ok?'✓':'−'+d.pts)+'</b></li>').join('')
-    :'<div class="none">暂无扣分项，IP 很干净</div>';
+    :'<div class="none">暂无扣分项，IP 很干净</div>');
 }
 const isDatacenter=()=>{const hay=(S.isp+' '+S.org+' '+S.asn).toLowerCase();
 return DC_KEY.some(k=>hay.includes(k));};
@@ -356,21 +372,26 @@ else{e.className='pill unk';e.textContent='否';}}
 function detectIPType(){
 const dc=isDatacenter();
 setTypePill('t_dc',dc,'warn');setTypePill('t_home',!dc,'ok');
+S.covered.type=true;
 const hay=(S.isp+' '+S.org+' '+S.asn).toLowerCase();
 let asnCC=null;for(const k in CC_WORDS){if(hay.includes(k)){asnCC=CC_WORDS[k];break;}}
 const geoCC=(S.cc||'').toUpperCase();
 let native=null;
 if(asnCC&&geoCC)native=(asnCC===geoCC);
-else if(!dc&&geoCC)native=true;
-if(native===true){setTypePill('t_native',true,'ok');setTypePill('t_cast',false,'unk');}
+// 无ASN注册地证据时保持未知，不默认"原生"（原生≠住宅）
+if(native===true){setTypePill('t_native',true,'ok');setTypePill('t_cast',false,'unk');
+S.checks.nat='原生IP（ASN注册地'+asnCC+'=使用地'+geoCC+'）';}
 else if(native===false){setTypePill('t_native',false,'unk');setTypePill('t_cast',true,'warn');
-addDeduct('广播IP（注册地'+asnCC+'≠使用地'+geoCC+'）',10);
+// 与机房扣分互斥：已因机房扣分则不再重复扣，避免同一风险 double count
+if(!dc)addDeduct('广播IP（注册地'+asnCC+'≠使用地'+geoCC+'）',10);
 S.checks.nat='广播IP('+asnCC+'→'+geoCC+')，部分业务风控敏感，建议换原生IP';}
-else{setTypePill('t_native',null,'unk');setTypePill('t_cast',null,'unk');}
-$('t_note').textContent='机房/住宅看线路归属；原生=注册地与使用地一致，广播=不一致（如美区 ASN 的 IP 拿到别处用），后者部分严格风控会卡。';
+else{setTypePill('t_native',null,'unk');setTypePill('t_cast',null,'unk');
+S.checks.nat='原生/广播未知（缺少ASN注册地数据，不下结论）';}
+$('t_note').textContent='机房/住宅看线路归属；原生=ASN注册地与使用地一致，需两边数据齐全才判定，证据不足显示未知。';
 }
 function checkISP(){
 const dc=isDatacenter();
+S.covered.isp=true;
 $('c_isp_v').textContent=dc?'机房 IP':'住宅宽带';
 $('c_isp_d').textContent=(S.isp!=='—'?S.isp:S.org)+' · '+(S.asn||'');
 if(dc){setPill('c_isp_p','warn','机房线路');addDeduct('机房/云服务器 IP（'+(S.org||S.isp).slice(0,18)+'）',40);
@@ -379,18 +400,25 @@ else{setPill('c_isp_p','ok','住宅/正常');addDeduct('非机房线路',0,true)
 }
 async function checkV6(){
 const c=new AbortController();const t=setTimeout(()=>c.abort(),8000);
+let txt=null,ok=false;
 try{
 const r=await fetch('https://ipv6.icanhazip.com/',{signal:c.signal,cache:'no-store'});
 clearTimeout(t);
-const txt=(await r.text()).trim();
-if(/:/.test(txt)){
+txt=(await r.text()).trim();ok=true;
+}catch(e){clearTimeout(t);}
+S.covered.v6=true;
+if(ok&&/:/.test(txt)){
 $('c_v6_v').textContent='支持';$('c_v6_d').textContent='出口：'+txt.slice(0,24)+'…';
 setPill('c_v6_p','ok','已启用');addDeduct('IPv6 可用',0,true);S.checks.v6='支持IPv6';return;
 }
-throw 0;
-}catch(e){clearTimeout(t);
-$('c_v6_v').textContent='不支持';$('c_v6_d').textContent='只有 IPv4（不扣分，仅供参考）';
-setPill('c_v6_p','unk','无');S.checks.v6='无IPv6';}
+if(ok){
+// 请求成功但返回的不是 IPv6 地址 = 确实不支持
+$('c_v6_v').textContent='不支持';$('c_v6_d').textContent='出口只有 IPv4（不扣分，仅供参考）';
+setPill('c_v6_p','unk','无');S.checks.v6='无IPv6';return;
+}
+// 请求本身失败（超时/被拦截）= 未知，不下"不支持"的结论
+$('c_v6_v').textContent='检测失败';$('c_v6_d').textContent='查询接口超时或被拦截，未知是否支持';
+setPill('c_v6_p','unk','未知');S.checks.v6='IPv6未知（查询失败）';
 }
 function rtcIPs(ms){
 return new Promise(res=>{
@@ -410,29 +438,45 @@ try{
 const ips=await rtcIPs(7000);
 const pub=ips.filter(ip=>!(isV4(ip)?isPrivateV4(ip):/^(fe80|fc00|fd00)/i.test(ip)));
 const leak=pub.filter(ip=>ip!==S.ip);
+S.covered.rtc=true;
 $('c_rtc_v').textContent=leak.length?('泄漏 '+leak.length+' 个'):'无泄漏';
 $('c_rtc_d').textContent=leak.length?('暴露 IP：'+leak.slice(0,2).join(', ')):'真实出口 IP 未被 WebRTC 暴露';
 if(leak.length){setPill('c_rtc_p','bad','已泄漏');addDeduct('WebRTC 暴露真实 IP',15);
 S.checks.rtc='WebRTC泄漏('+leak[0]+')，浏览器装扩展禁用WebRTC或换浏览器';}
 else{setPill('c_rtc_p','ok','安全');addDeduct('WebRTC 无泄漏',0,true);S.checks.rtc='WebRTC无泄漏';}
-}catch(e){$('c_rtc_v').textContent='无法检测';setPill('c_rtc_p','unk','未知');S.checks.rtc='WebRTC未知';}
+}catch(e){$('c_rtc_v').textContent='无法检测';setPill('c_rtc_p','unk','未知');S.checks.rtc='WebRTC未知';S.covered.rtc=true;}
 }
 async function checkBL(){
+// Spamhaus ZEN 经公共 DoH 查询：真命中返回 127.0.0.2~11；
+// 127.255.255.254 / "open resolver" 表示查询通道被 Spamhaus 拒绝（非命中）；
+// NXDOMAIN（无 Answer）表示未收录。绝不能把通道被拒当成命中。
+const setUnknown=(d)=>{
+$('c_bl_v').textContent='未知';$('c_bl_d').textContent=d;
+setPill('c_bl_p','unk','未知');S.checks.bl='黑名单未知';S.covered.bl=true;};
 try{
 const q=revIP(S.ip)+'.zen.spamhaus.org';
-const j=await fetchJSON('https://cloudflare-dns.com/dns-query?name='+encodeURIComponent(q)+'&type=TXT',
+const j=await fetchJSON('https://cloudflare-dns.com/dns-query?name='+encodeURIComponent(q)+'&type=A',
 {headers:{'accept':'application/dns-json'}},9000);
-const hit=j.Status===0&&j.Answer&&j.Answer.length;
-if(hit){$('c_bl_v').textContent='命中黑名单';$('c_bl_d').textContent='Spamhaus ZEN 有收录，谨慎用于重要账号';
+S.covered.bl=true;
+const ans=(j.Answer||[]).map(a=>String(a.data)).join(' ');
+if(/127\.0\.0\.(\d+)/.test(ans)){
+const code=+ans.match(/127\.0\.0\.(\d+)/)[1];
+if(code>=2&&code<=11){
+$('c_bl_v').textContent='命中黑名单';
+$('c_bl_d').textContent='Spamhaus ZEN 有收录（代码 127.0.0.'+code+'），谨慎用于重要账号';
 setPill('c_bl_p','bad','已收录');addDeduct('命中 Spamhaus 黑名单',30);
-S.checks.bl='命中Spamhaus黑名单，建议换IP';}
-else{$('c_bl_v').textContent='干净';$('c_bl_d').textContent='Spamhaus ZEN 无收录';
-setPill('c_bl_p','ok','未收录');addDeduct('黑名单干净',0,true);S.checks.bl='黑名单干净';}
-}catch(e){$('c_bl_v').textContent='查询失败';$('c_bl_d').textContent='DoH 查询超时';
-setPill('c_bl_p','unk','未知');S.checks.bl='黑名单未知';}
+S.checks.bl='命中Spamhaus黑名单(127.0.0.'+code+')，建议换IP';return;}
+}
+if(/127\.255\.255\.25[24]/.test(ans)||/open resolver|excessive/i.test(ans)){
+setUnknown('Spamhaus 拒绝公共 DNS 查询通道；可手动去 check.spamhaus.org 复查');return;}
+// NXDOMAIN / 无 Answer = 未收录
+$('c_bl_v').textContent='干净';$('c_bl_d').textContent='Spamhaus ZEN 无收录（仅代表该数据源）';
+setPill('c_bl_p','ok','未收录');addDeduct('黑名单干净',0,true);S.checks.bl='黑名单干净(Spamhaus ZEN)';
+}catch(e){setUnknown('DoH 查询超时或失败');}
 }
 function checkTZ(){
 const btz=Intl.DateTimeFormat().resolvedOptions().timeZone||'未知';
+S.covered.tz=true;
 $('c_tz_v').textContent=btz;
 const ok=S.tz&&btz&&btz.toLowerCase()===String(S.tz).toLowerCase();
 $('c_tz_d').textContent='IP 属地时区：'+(S.tz||'未知');
@@ -442,6 +486,7 @@ S.checks.tz='时区不一致(浏览器'+btz+'≠IP'+S.tz+')，把系统时区改
 }
 function checkLang(){
 const lang=(navigator.language||'未知');
+S.covered.lang=true;
 $('c_lang_v').textContent=lang;
 const cc=(S.cc||'').toLowerCase(),lc=lang.toLowerCase();
 const ok=cc&&lc.includes(cc);
@@ -456,14 +501,23 @@ try{
 const j=await fetchJSON('https://httpbin.org/headers',null,9000);
 const h=j.headers||{};const keys=Object.keys(h);
 const sig=keys.filter(k=>/^(via|forwarded|x-forwarded-for|x-real-ip|proxy)/i.test(k));
-if(sig.length){$('c_isp_v').textContent+='';/*保持*/
+S.covered.proxy=true;
+if(sig.length){
+$('c_proxy_v').textContent='发现 '+sig.length+' 个';
+$('c_proxy_d').textContent=sig.slice(0,3).join(', ');
+setPill('c_proxy_p','bad','透明代理');
 addDeduct('检测到透明代理头('+sig.slice(0,2).join(',')+')',10);
 S.checks.proxy='有透明代理头('+sig.join(',')+')，换高匿代理';}
-else{S.checks.proxy='无透明代理头';addDeduct('无透明代理痕迹',0,true);}
-}catch(e){S.checks.proxy='代理检测未知';}
-renderProxyCell();
+else{
+$('c_proxy_v').textContent='无';
+$('c_proxy_d').textContent='请求头干净，未发现代理痕迹';
+setPill('c_proxy_p','ok','高匿');
+addDeduct('无透明代理痕迹',0,true);S.checks.proxy='无透明代理头';}
+}catch(e){
+S.covered.proxy=true;
+$('c_proxy_v').textContent='检测失败';$('c_proxy_d').textContent='httpbin 查询失败或超时';
+setPill('c_proxy_p','unk','未知');S.checks.proxy='代理检测未知';}
 }
-function renderProxyCell(){/* 代理结果并入报告，不单独成卡 */}
 function checkDevice(){
 const ua=navigator.userAgent;let dev='未知设备',os='',br='';
 if(/iPhone/i.test(ua)){dev='iPhone';os='iOS';}
@@ -500,7 +554,8 @@ const L=['','时间：'+t,'出口 IP：'+S.ip,
 '纯洁度评分：'+S.score+'/100','---'];
 ['isp','nat','v6','rtc','bl','tz','lang','proxy','dev','speed','mon','svc'].forEach(k=>{if(S.checks[k])L.push(S.checks[k]);});
 if(S.ping.length)L.push('延迟：'+S.ping.join(' / '));
-L.push('---','结论：'+($('grade').textContent)+'。启发式评分，仅供参考。');
+L.push('---','数据来源：ipwho.is（归属地）/ Spamhaus ZEN via Cloudflare DoH（黑名单）/ httpbin（代理头）/ icanhazip（IPv6）',
+'结论：'+($('grade').textContent)+'。启发式评分，仅供参考，不代表任何平台官方风控结果。');
 return L.join('\n');
 }
 function canvasFP(){
@@ -628,9 +683,9 @@ check();
 let started=false;
 async function main(){
 if(started)return;started=true;
-S.score=100;S.deduct=[];S.checks={};S.ping=[];
+S.score=100;S.deduct=[];S.checks={};S.ping=[];S.covered={};
 const btn=$('startBtn');btn.disabled=true;btn.textContent='⏳ 检测中…';btn.style.opacity='.7';
-['c_isp_p','c_v6_p','c_rtc_p','c_bl_p','c_tz_p','c_lang_p'].forEach(runPill);
+['c_isp_p','c_v6_p','c_rtc_p','c_bl_p','c_tz_p','c_lang_p','c_proxy_p'].forEach(runPill);
 ['t_dc','t_home','t_native','t_cast'].forEach(id=>{const e=$(id);e.className='pill run';e.innerHTML='<span class="spin"></span>检测中';});
 $('deduct').innerHTML='<div class="none">正在逐项检查…</div>';
 try{
