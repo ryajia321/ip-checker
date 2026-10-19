@@ -236,7 +236,7 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
   <div class="card" style="margin-top:14px">
     <h2><span class="em">⚡</span>网络延迟</h2>
     <div id="pingRows"><div class="kv"><span class="k">待检测</span><span class="r">—</span></div></div>
-    <div class="kv"><span class="k">下载速度</span><span class="r" id="speedV">—</span></div>
+    <div class="kv"><span class="k">下载速度（估算）</span><span class="r" id="speedV">—</span></div>
     <div style="font-size:11.5px;color:var(--mut)" id="speedD"></div>
     <button class="btn ghost" id="speedBtn" style="margin-top:10px">⚡ 测试下载速度</button>
   </div>
@@ -247,7 +247,8 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
       纯网页做不了真正的 DNS 泄漏测试（需要服务端配合），30 秒自己验：
       <ol>
         <li>连上代理后，打开 <a href="https://www.dnsleaktest.com" target="_blank" rel="noopener">dnsleaktest.com</a> 点 <b>Standard test</b></li>
-        <li>看查出的 DNS 服务器归属地：<b>和你代理节点一致 = 没泄漏</b>；出现你真实宽带运营商 = 泄漏了</li>
+        <li>看查出的 DNS 服务器归属地：<b>和你代理节点一致 = 初步没问题，但不能完全排除泄漏</b>；出现你真实宽带运营商 = 很可能泄漏了</li>
+        <li>记住：<b>地理位置一致≠没泄漏，不一致≠泄漏了</b>。上面 EDNS 格只是网页初筛，真正的泄漏确认要看下面第 1 步的 Standard test 结果</li>
         <li>泄漏了 → 去代理设置里打开"劫持 DNS"或"强制走代理 DNS"</li>
       </ol>
     </div>
@@ -264,7 +265,7 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
     <div class="kv"><span class="k">⚡ Cloudflare 测速</span><span class="r"><a href="https://speed.cloudflare.com" target="_blank" rel="noopener" style="font-size:13px;color:#aebbff">speed.cloudflare.com →</a></span></div>
   </div>
   <p class="hint">检测在你的浏览器里运行，但以下请求会把你的 IP 暴露给对应服务：api.ipapi.is / ipinfo.io / ipwho.is（归属地与 ASN 交叉验证）、Cloudflare trace（CDN 视角）、Cloudflare DNS（查黑名单）、httpbin（查代理头）、icanhazip（查 IPv6 与延迟）、edns.ip-api.com（DNS 出口）、stun.l.google.com（WebRTC 打洞会暴露你的 IP 给谷歌）、地图瓦片（OSM/谷歌/高德）、jsdelivr（测速）、12 个服务站点（连通性测试）。指纹仅本地计算展示，不上传。本站无账号系统；节点历史仅存于本机 localStorage，可一键清空。<br>评分是启发式参考，不是官方风控结论。</p>
-  <footer>IP 纯洁度检测 v2.23 · 数据来源 ipapi.is / ipinfo.io / ipwho.is / Cloudflare / Spamhaus(via DoH) / httpbin / icanhazip / edns.ip-api.com<br>地图 © OpenStreetMap</footer>
+  <footer>IP 纯洁度检测 v2.24 · 数据来源 ipapi.is / ipinfo.io / ipwho.is / Cloudflare / Spamhaus(via DoH) / httpbin / icanhazip / edns.ip-api.com<br>地图 © OpenStreetMap</footer>
 </div>
 <script>
 const $=id=>document.getElementById(id);
@@ -513,6 +514,11 @@ if(dc){setPill('c_isp_p','warn','机房线路');addDeduct('机房/云服务器 I
 S.checks.isp='机房IP（'+S.org+'，'+basis+'），很多风控会重点盯，建议换住宅IP';}
 else{setPill('c_isp_p','ok','非机房');addDeduct('非机房线路（'+basis+'，未断言住宅）',0,true);S.checks.isp='非机房线路（'+basis+'）';}
 }
+const isV6=ip=>{ // v2.24：严格校验 IPv6，避免错误文本（含冒号）被误判为支持
+if(!ip||typeof ip!=='string')return false;
+const s=ip.trim();
+if(!/:/.test(s))return false;
+return /^([0-9a-f]{0,4}:){2,7}[0-9a-f]{0,4}$/i.test(s)&&/[0-9a-f]/i.test(s.replace(/:/g,''));};
 async function checkV6(){
 const c=new AbortController();const t=setTimeout(()=>c.abort(),8000);
 let txt=null,ok=false;
@@ -522,7 +528,7 @@ clearTimeout(t);
 txt=(await r.text()).trim();ok=true;
 }catch(e){clearTimeout(t);}
 S.covered.v6=true;
-if(ok&&/:/.test(txt)){
+if(ok&&isV6(txt)){
 $('c_v6_v').textContent='支持';$('c_v6_d').textContent='出口：'+txt.slice(0,24)+'…';
 setPill('c_v6_p','ok','已启用');addDeduct('IPv6 可用',0,true);S.checks.v6='支持IPv6';return;
 }
@@ -536,42 +542,72 @@ $('c_v6_v').textContent='检测失败';$('c_v6_d').textContent='查询接口超�
 setPill('c_v6_p','fail','请求失败');S.unknown.v6=true;S.checks.v6='IPv6未知（查询失败）';
 }
 function rtcIPs(ms){
+// v2.24：结构化返回，区分 不支持/创建失败/无候选/超时/成功；正确清理 PC 与定时器
 return new Promise(res=>{
-const ips=new Set();let pc=null;
-try{pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});}
-catch(e){res([]);return;}
+const ips=new Set();let pc=null,completed=false,created=false,timer=null,finished=false;
+const finish=(timedOut)=>{if(finished)return;finished=true;
+if(timer){clearTimeout(timer);timer=null;}
+try{pc&&pc.close();}catch(e){}pc=null;
+res({ips:[...ips],created,completed,timedOut});};
+let RTC=null;
+try{RTC=window.RTCPeerConnection||window.webkitRTCPeerConnection;}catch(e){}
+if(!RTC){res({ips:[],created:false,completed:false,timedOut:false,unsupported:true});return;}
+try{pc=new RTC({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});created=true;}
+catch(e){res({ips:[],created:false,completed:false,timedOut:false});return;}
 const grab=s=>{const m4=s.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g)||[];
 const m6=s.match(/\b[0-9a-f]*:[0-9a-f:]+:[0-9a-f]*\b/gi)||[];
 m4.concat(m6).forEach(ip=>ips.add(ip));};
 pc.onicecandidate=e=>{if(e.candidate)grab(e.candidate.candidate);};
+try{if('onicegatheringstatechange' in pc){pc.onicegatheringstatechange=()=>{if(pc&&pc.iceGatheringState==='complete'){completed=true;finish(false);}};}}catch(e){}
 try{pc.createDataChannel('t');pc.createOffer().then(o=>pc.setLocalDescription(o)).catch(()=>{});}catch(e){}
-setTimeout(()=>{try{pc.close();}catch(e){}res([...ips]);},ms||6000);
+timer=setTimeout(()=>finish(true),ms||7000);
 });
 }
-function classifyCand(ip){ // v2.20：ICE 候选地址严格分类
-if(/\.local$/i.test(ip))return 'lan';
-if(isV4(ip))return isPrivateV4(ip)?'lan':'pub4';
-if(/^(fe80|fc00|fd00|::1$)/i.test(ip))return 'lan';
+function classifyCand(ip){ // v2.24：先处理 IPv4-mapped（::ffff:1.2.3.4），修正 ::1 判定
+const s=String(ip);
+if(/\.local$/i.test(s))return 'lan';
+const v4m=s.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/);
+if(v4m&&isV4(v4m[1]))return isPrivateV4(v4m[1])?'lan':'pub4';
+if(isV4(s))return isPrivateV4(s)?'lan':'pub4';
+if(/^(fe80|fc00|fd)/i.test(s)||/^::1$/.test(s))return 'lan';
 return 'pub6';}
 async function checkRTC(){
 try{
-const ips=await rtcIPs(7000);
+const r=await rtcIPs(7000);
+S.covered.rtc=true;
+if(r.unsupported){
+$('c_rtc_v').textContent='不支持';$('c_rtc_d').textContent='浏览器不支持 WebRTC，无法检测（不扣分）';
+setPill('c_rtc_p','unk','未知');S.unknown.rtc=true;S.checks.rtc='WebRTC未知（浏览器不支持）';return;}
+if(!r.created){
+$('c_rtc_v').textContent='检测失败';$('c_rtc_d').textContent='RTC 连接创建失败（不扣分）';
+setPill('c_rtc_p','fail','请求失败');S.unknown.rtc=true;S.checks.rtc='WebRTC未知（创建失败）';return;}
 const cls={lan:[],pub4:[],pub6:[]};
-ips.forEach(ip=>{cls[classifyCand(ip)].push(ip);});
-// 泄漏判定：公网 IP 且与任一数据源出口 IP 都不一致
+r.ips.forEach(ip=>{cls[classifyCand(ip)].push(ip);});
+// 数据不足：一个候选都没拿到 → 无法判断，绝不显示绿色安全
+if(r.ips.length===0){
+$('c_rtc_v').textContent=r.timedOut?'检测超时':'无候选数据';
+$('c_rtc_d').textContent='未收集到任何 ICE 候选地址，无法判断是否泄漏（不扣分）';
+setPill('c_rtc_p','unk','未知');S.unknown.rtc=true;S.checks.rtc='WebRTC未知（无候选数据）';return;}
+// 泄漏判定：公网候选且与任一数据源出口 IP 都不一致
 const exits=new Set((S.consensus?S.consensus.ips:[]).map(x=>x.ip));exits.add(S.ip);
 const leak=[...cls.pub4,...cls.pub6].filter(ip=>!exits.has(ip));
-S.covered.rtc=true;
-const stat='内网 '+cls.lan.length+' · 公网v4 '+cls.pub4.length+' · 公网v6 '+cls.pub6.length;
+const stat='内网 '+cls.lan.length+' · 公网v4 '+cls.pub4.length+' · 公网v6 '+cls.pub6.length+(r.completed?'':'（收集未完成）');
 if(leak.length){
 $('c_rtc_v').textContent='泄漏 '+leak.length+' 个';
-$('c_rtc_d').textContent=stat+' · 暴露：'+leak.slice(0,2).map(maskIP).join(', ');
+$('c_rtc_d').textContent=stat+' · 暴露：'+leak.slice(0,2).map(maskIP).join(', ')
++(S.consensus&&S.consensus.split?'（若你的代理有出口池轮换，也可能是新出口，建议重测一次确认）':'');
 setPill('c_rtc_p','bad','已泄漏');addDeduct('WebRTC 暴露真实 IP（'+maskIP(leak[0])+'，本地实测）',15);
-S.checks.rtc='WebRTC泄漏('+leak[0]+')，浏览器装扩展禁用WebRTC或换浏览器';}
-else{
+S.checks.rtc='WebRTC泄漏('+leak[0]+')，浏览器装扩展禁用WebRTC或换浏览器';return;}
+// 足够数据：收集完成，或至少看到内网 host 候选（证明收集中正常工作）
+const sure=r.completed||cls.lan.length>0;
+if(sure){
 $('c_rtc_v').textContent=cls.pub4.length+cls.pub6.length?'无泄漏':'仅内网';
 $('c_rtc_d').textContent=stat+'（仅内网地址不算泄漏，不扣分）';
 setPill('c_rtc_p','ok','安全');addDeduct('WebRTC 无泄漏',0,true);S.checks.rtc='WebRTC无泄漏('+stat+')';}
+else{
+$('c_rtc_v').textContent='数据不足';
+$('c_rtc_d').textContent=stat+' · 候选收集不完整，无法下"无泄漏"结论（不扣分）';
+setPill('c_rtc_p','unk','未知');S.unknown.rtc=true;S.checks.rtc='WebRTC未知（数据不足）';}
 }catch(e){$('c_rtc_v').textContent='无法检测';setPill('c_rtc_p','fail','请求失败');S.unknown.rtc=true;S.checks.rtc='WebRTC未知（检测异常）';S.covered.rtc=true;}
 }
 async function checkBL(){
@@ -584,7 +620,10 @@ $('c_bl_v').textContent=failed?'检测失败':'未知';$('c_bl_d').textContent=d
 setPill('c_bl_p',failed?'fail':'unk',failed?'请求失败':'未知');
 S.unknown.bl=true;
 S.checks.bl='黑名单'+(failed?'未知（查询失败）':'未知');S.covered.bl=true;};
-if(S.ip&&!isV4(S.ip)){setUnknown('Spamhaus ZEN 仅支持 IPv4 查询，当前为 IPv6，未检测（不扣分）',false);return;}
+if(S.ip&&!isV4(S.ip)){
+// v2.24：IPv6 明确显示"未检测"，不显示"干净"，不扣分
+$('c_bl_v').textContent='未检测';$('c_bl_d').textContent='Spamhaus ZEN 仅支持 IPv4 查询，当前为 IPv6（不扣分）';
+setPill('c_bl_p','unk','未检测');S.unknown.bl=true;S.checks.bl='黑名单未检测（IPv6 不支持当前查询方式）';S.covered.bl=true;return;}
 try{
 const q=revIP(S.ip)+'.zen.spamhaus.org';
 const j=await fetchJSON('https://cloudflare-dns.com/dns-query?name='+encodeURIComponent(q)+'&type=A',
@@ -719,30 +758,35 @@ if(/Edg\//i.test(ua))br='Edge';else if(/Chrome\//i.test(ua))br='Chrome';
 else if(/Safari\//i.test(ua))br='Safari';else if(/Firefox\//i.test(ua))br='Firefox';
 S.ua=dev+' · '+os+' · '+br;S.checks.dev=S.ua;
 }
-async function pingOne(url){
+async function pingOne(url,ms){
+// v2.24：结构化返回。no-cors 读不到 HTTP 状态，"没抛异常"只证明请求发得出去，不等于服务业务正常
 const t0=performance.now();
-try{await fetch(url+'?_='+Date.now(),{mode:'no-cors',cache:'no-store'});}catch(e){}
-return Math.round(performance.now()-t0);
+const c=new AbortController();const t=setTimeout(()=>c.abort(),ms||8000);
+try{await fetch(url+'?_='+Date.now(),{mode:'no-cors',cache:'no-store',signal:c.signal});clearTimeout(t);
+return {ok:true,ms:Math.round(performance.now()-t0),reason:null};}
+catch(e){clearTimeout(t);
+return {ok:false,ms:null,reason:(e&&e.name==='AbortError')?'timeout':'failed'};}
 }
 async function checkPing(){
 const targets=[['ipwho.is','https://ipwho.is/'],['httpbin','https://httpbin.org/get'],['icanhazip','https://ipv6.icanhazip.com/']];
 const rows=[];
 for(const [name,url] of targets){
-let ms;try{ms=await pingOne(url);}catch(e){ms='—';}
-rows.push({name,ms});S.ping.push(name+':'+ms+'ms');
+const r=await pingOne(url,8000);
+rows.push({name,r});S.ping.push({name,ok:r.ok,ms:r.ms,reason:r.reason});
 drawPing(rows);
 }
 }
 function drawPing(rows){
 $('pingRows').innerHTML=rows.map(r=>
 '<div class="kv"><span class="k">'+esc(r.name)+'</span><span class="r">'+
-(r.ms==='—'?'—':r.ms+' ms')+'</span></div>').join('');
+(r.r.ok?r.r.ms+' ms':(r.r.reason==='timeout'?'超时':'失败'))+'</span></div>').join('')
++'<div style="font-size:11px;color:var(--mut);margin-top:6px">no-cors 模式读不到服务状态，"有毫秒数"只代表请求发得出去，不代表业务正常</div>';
 }
 const HIST_KEY='ipcheck_hist_v2';
 function loadHist(){try{return JSON.parse(localStorage.getItem(HIST_KEY))||[];}catch(e){return[];}}
 function saveHistRaw(h){try{localStorage.setItem(HIST_KEY,JSON.stringify(h.slice(0,5)));}catch(e){}}
-function avgPing(){ // 平均延迟（毫秒），无数据返回'—'
-const ms=S.ping.map(s=>{const m=String(s).match(/:(\d+)ms/);return m?+m[1]:null;}).filter(v=>v!==null);
+function avgPing(){ // 平均延迟（毫秒），只统计成功的；无成功数据返回'—'
+const ms=S.ping.filter(p=>p&&p.ok&&p.ms!=null).map(p=>p.ms);
 return ms.length?Math.round(ms.reduce((a,b)=>a+b,0)/ms.length)+'ms':'—';}
 function nodeTypeStr(){ // 机房/非机房 + 原生(推断)/疑似广播/未知
 const dc=$('t_dc').textContent==='是'?'机房':'非机房';
@@ -804,7 +848,7 @@ const L=['','时间：'+t,'出口 IP：'+S.ip,
 '归属地：'+zhLoc(),'运营商/组织：'+S.org,'ASN：'+S.asn,
 '纯洁度评分：'+S.score+'/100','---'];
 ['isp','nat','v6','rtc','bl','tz','lang','proxy','edns','egress','ccConflict','dev','speed','mon','svc'].forEach(k=>{if(S.checks[k])L.push(S.checks[k]);});
-if(S.ping.length)L.push('延迟：'+S.ping.join(' / '));
+if(S.ping.length)L.push('延迟：'+S.ping.map(p=>p.name+':'+(p.ok?p.ms+'ms':(p.reason==='timeout'?'超时':'失败'))).join(' / '));
 L.push('---','数据来源：ipapi.is / ipinfo.io / ipwho.is（归属地交叉）/ Cloudflare trace（CDN视角）/ Spamhaus ZEN via DoH（黑名单）/ httpbin（代理头）/ icanhazip（IPv6）/ edns.ip-api.com（DNS出口）',
 '结论：'+($('grade').textContent)+'。启发式评分，仅供参考，不代表任何平台官方风控结果。',
 '注意：本报告包含完整 IP，只发给信任的人，不要公开转发。');
@@ -880,27 +924,37 @@ S.checks.svc='服务连通：'+res.join('、');
 btn.disabled=false;btn.textContent='↻ 重新测试';
 }
 async function speedTest(){
+// v2.24：检查 HTTP 状态 + 25 秒超时 + 最小样本；失败清除旧结果；明确标注"估算"
 const btn=$('speedBtn');btn.disabled=true;btn.textContent='测速中…';
+delete S.checks.speed;
 const urls=[
 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js',
 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js'
 ];
+const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),25000);
 try{
 let workUrl=null;
 for(const u of urls){
-try{const r=await fetch(u+'?sp='+Date.now(),{cache:'no-store'});const b=await r.blob();if(b.size>100000){workUrl=u;break;}}catch(e){}
+try{const r=await fetch(u+'?sp='+Date.now(),{cache:'no-store',signal:ctrl.signal});
+if(!r.ok)continue;
+const b=await r.blob();if(b.size>100000){workUrl=u;break;}}catch(e){if(e&&e.name==='AbortError')throw e;}
 }
-if(!workUrl)throw 0;
+if(!workUrl)throw new Error('probe failed');
 const t0=performance.now();
-const r2=await fetch(workUrl+'?sp2='+Date.now(),{cache:'no-store'});
+const r2=await fetch(workUrl+'?sp2='+Date.now(),{cache:'no-store',signal:ctrl.signal});
+if(!r2.ok)throw new Error('bad status '+r2.status);
 const b2=await r2.blob();
+clearTimeout(timer);
+if(b2.size<100000)throw new Error('sample too small');
 const sec=(performance.now()-t0)/1000;
+if(!(sec>0))throw new Error('bad timing');
 const mbps=(b2.size*8/sec/1e6);
 $('speedV').textContent=mbps.toFixed(1)+' Mbps';
 const lv=mbps>50?'🚀 极速':mbps>20?'✅ 流畅':mbps>5?'😐 一般':'🐢 较慢';
-$('speedD').textContent=lv+' · '+(b2.size/1024).toFixed(0)+'KB 用时 '+sec.toFixed(1)+'s';
-S.checks.speed='下载速度 '+mbps.toFixed(1)+'Mbps';
-}catch(e){$('speedV').textContent='测速失败';$('speedD').textContent='文件下载失败，换个网络试试';}
+$('speedD').textContent=lv+' · '+(b2.size/1024).toFixed(0)+'KB 用时 '+sec.toFixed(1)+'s（单文件下载估算，非精确宽带测速）';
+S.checks.speed='下载速度约 '+mbps.toFixed(1)+'Mbps（单文件估算）';
+}catch(e){clearTimeout(timer);delete S.checks.speed;
+$('speedV').textContent='测速失败';$('speedD').textContent='文件下载失败或超时，换个网络试试（旧结果已清除）';}
 btn.disabled=false;btn.textContent='↻ 重新测速';
 }
 let monTimer=null,monCount=0;const monLog=[];
