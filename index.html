@@ -164,7 +164,7 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
     <h2><span class="em">📊</span>评分规则说明</h2>
     <div style="font-size:12.5px;color:var(--mut);line-height:1.9">
       满分 100，按风险项扣分。扣分项：机房 IP −40 · 命中 Spamhaus 黑名单 −30 · IP 曾被标记滥用 −20 · WebRTC 泄漏 −15 · Tor 出口 −15 · 透明代理 −10 · 疑似广播 IP −10（与机房分互斥，不重复扣；多源国家冲突仅判"疑似"，不扣分） · 时区 / 语言不一致各 −5（IP 时区/国家未知时不扣分）。<br>
-      归属地/ASN 由 ipapi.is、ipinfo.io、ipwho.is、Cloudflare 四源交叉验证。<b style="color:var(--warn)">查不到 ≠ 干净</b>：未知/失败的项目不扣分、也不算"通过"，有未知项时等级显示"结果不完整"，请看覆盖率提示。<br>
+      归属地/ASN 由 ipapi.is、ipinfo.io、ipwho.is、Cloudflare 四源交叉验证。<b style="color:var(--warn)">注意：前三者均为商业 IP 地理库，可能共享上游数据源，并非完全独立的证据</b>；Cloudflare trace 为 CDN 实测视角，相对独立。<b style="color:var(--warn)">查不到 ≠ 干净</b>：未知/失败的项目不扣分、也不算"通过"，有未知项时等级显示"结果不完整"，请看覆盖率提示。<br>
       ipapi.is 免费档不返回 is_datacenter 等风控字段时，机房识别降级为多源组织名关键词启发式（"非机房"不等于"住宅"，本站不做住宅断言）；Tor/滥用标记显示未知。原生/广播均为启发式推断，"疑似"不代表确认。<br>
       ✓ 为通过项（事实），−分为风险提示（推断）。这是本站启发式参考分，<b style="color:var(--txt)">不代表任何平台的官方风控结果</b>。
     </div>
@@ -264,7 +264,7 @@ footer{margin-top:26px;font-size:11px;color:#5c6488;text-align:center;line-heigh
     <div class="kv"><span class="k">⚡ Cloudflare 测速</span><span class="r"><a href="https://speed.cloudflare.com" target="_blank" rel="noopener" style="font-size:13px;color:#aebbff">speed.cloudflare.com →</a></span></div>
   </div>
   <p class="hint">检测在你的浏览器里运行，但以下请求会把你的 IP 暴露给对应服务：api.ipapi.is / ipinfo.io / ipwho.is（归属地与 ASN 交叉验证）、Cloudflare trace（CDN 视角）、Cloudflare DNS（查黑名单）、httpbin（查代理头）、icanhazip（查 IPv6 与延迟）、edns.ip-api.com（DNS 出口）、stun.l.google.com（WebRTC 打洞会暴露你的 IP 给谷歌）、地图瓦片（OSM/谷歌/高德）、jsdelivr（测速）、12 个服务站点（连通性测试）。指纹仅本地计算展示，不上传。本站无账号系统；节点历史仅存于本机 localStorage，可一键清空。<br>评分是启发式参考，不是官方风控结论。</p>
-  <footer>IP 纯洁度检测 v2.22 · 数据来源 ipapi.is / ipinfo.io / ipwho.is / Cloudflare / Spamhaus(via DoH) / httpbin / icanhazip / edns.ip-api.com<br>地图 © OpenStreetMap</footer>
+  <footer>IP 纯洁度检测 v2.23 · 数据来源 ipapi.is / ipinfo.io / ipwho.is / Cloudflare / Spamhaus(via DoH) / httpbin / icanhazip / edns.ip-api.com<br>地图 © OpenStreetMap</footer>
 </div>
 <script>
 const $=id=>document.getElementById(id);
@@ -427,7 +427,8 @@ function renderScore(){
   else if(S.score>=50){g.className='grade g-warn';g.textContent='一般';}
   else{g.className='grade g-bad';g.textContent='较脏';}
   const ul=$('deduct');
-  const done=COV_KEYS.filter(k=>S.covered[k]).length;
+  // v2.23：分子=真正完成且有结论的项；未知/失败/冲突项不计入"完成"，不得视为通过
+  const done=COV_KEYS.filter(k=>S.covered[k]&&!S.unknown[k]).length;
   const covHtml='<div style="font-size:12px;color:var(--mut);padding:8px 0;border-bottom:1px dashed rgba(255,255,255,.08);margin-bottom:4px">'
     +'核心检测完成 '+done+'/'+COV_KEYS.length+' 项'+(unkCount?' · <span style="color:var(--warn)">'+unkCount+' 项未知</span>':'')
     +(done<COV_KEYS.length||unkCount?'<br><span style="color:var(--warn)">⚠️ 有项目未知或未完成：查不到≠干净，分数可能虚高</span>':'')+'</div>';
@@ -498,8 +499,8 @@ const t=v===null?'<span class="pill unk">未知</span>':(v?'<span class="pill ba
 return '<div class="kv"><span class="k">'+label+'</span><span class="r">'+t+'</span></div>';};
 el.innerHTML=row('🔀 VPN',r.vpn)+row('🧅 Tor 出口',r.tor)+row('🕵️ 已知代理',r.proxy)+row('⚠️ 曾被标记滥用',r.abuser)
 +(r.hasAny?'':'<div style="font-size:11px;color:var(--mut);margin-top:6px">ipapi.is 免费档未返回风控字段，以上为未知</div>');
-if(r.tor===true)addDeduct('Tor 出口节点',15);
-if(r.abuser===true)addDeduct('IP 曾被标记为滥用源',20);
+if(r.tor===true)addDeduct('Tor 出口节点（ipapi.is 风控字段）',15);
+if(r.abuser===true)addDeduct('IP 曾被标记为滥用源（ipapi.is 风控字段）',20);
 }
 function checkISP(){
 const r=S.risk;let dc,basis;
@@ -564,8 +565,8 @@ S.covered.rtc=true;
 const stat='内网 '+cls.lan.length+' · 公网v4 '+cls.pub4.length+' · 公网v6 '+cls.pub6.length;
 if(leak.length){
 $('c_rtc_v').textContent='泄漏 '+leak.length+' 个';
-$('c_rtc_d').textContent=stat+' · 暴露：'+leak.slice(0,2).join(', ');
-setPill('c_rtc_p','bad','已泄漏');addDeduct('WebRTC 暴露真实 IP',15);
+$('c_rtc_d').textContent=stat+' · 暴露：'+leak.slice(0,2).map(maskIP).join(', ');
+setPill('c_rtc_p','bad','已泄漏');addDeduct('WebRTC 暴露真实 IP（'+maskIP(leak[0])+'，本地实测）',15);
 S.checks.rtc='WebRTC泄漏('+leak[0]+')，浏览器装扩展禁用WebRTC或换浏览器';}
 else{
 $('c_rtc_v').textContent=cls.pub4.length+cls.pub6.length?'无泄漏':'仅内网';
@@ -589,18 +590,24 @@ const q=revIP(S.ip)+'.zen.spamhaus.org';
 const j=await fetchJSON('https://cloudflare-dns.com/dns-query?name='+encodeURIComponent(q)+'&type=A',
 {headers:{'accept':'application/dns-json'}},9000);
 S.covered.bl=true;
+// v2.23：按 DoH Status 区分。Status 0=NOERROR，3=NXDOMAIN（=未收录）；
+// 其他状态（2=SERVFAIL 等）无 Answer 不代表未收录 → 请求失败，绝不能当"干净"。
+const st=j&&j.Status;
+if(st!==0&&st!==3){setUnknown('DoH 查询返回异常状态（Status='+st+'），无法判断',true);return;}
 const ans=(j.Answer||[]).map(a=>String(a.data)).join(' ');
 if(/127\.0\.0\.(\d+)/.test(ans)){
 const code=+ans.match(/127\.0\.0\.(\d+)/)[1];
 if(code>=2&&code<=11){
 $('c_bl_v').textContent='命中黑名单';
 $('c_bl_d').textContent='Spamhaus ZEN 有收录（代码 127.0.0.'+code+'），谨慎用于重要账号';
-setPill('c_bl_p','bad','已收录');addDeduct('命中 Spamhaus 黑名单',30);
+setPill('c_bl_p','bad','已收录');addDeduct('命中 Spamhaus 黑名单（127.0.0.'+code+'）',30);
 S.checks.bl='命中Spamhaus黑名单(127.0.0.'+code+')，建议换IP';return;}
+// 127.0.0.x 但 code 不在文档范围内（如 .1）：无法识别 → 未知，不当"干净"
+setUnknown('Spamhaus 返回无法识别的响应（'+ans.slice(0,24)+'…），未下结论',false);return;
 }
 if(/127\.255\.255\.25[245]/.test(ans)||/open resolver|excessive/i.test(ans)){
 setUnknown('Spamhaus 拒绝公共 DNS 查询通道；可手动去 check.spamhaus.org 复查',false);return;}
-// NXDOMAIN / 无 Answer = 未收录
+// Status 0/3 且无 Answer = 未收录
 $('c_bl_v').textContent='干净';$('c_bl_d').textContent='Spamhaus ZEN 无收录（仅代表该数据源）';
 setPill('c_bl_p','ok','未收录');addDeduct('黑名单干净',0,true);S.checks.bl='黑名单干净(Spamhaus ZEN)';
 }catch(e){setUnknown('DoH 查询超时或失败',true);}
@@ -642,7 +649,12 @@ S.checks.lang='语言('+lang+')与IP国家('+S.cc+')不符，改浏览器语言'
 function renderSrcStatus(src){
 const ok=src.ok;
 const dot=(v)=>v?'<span style="color:var(--ok)">✓</span>':'<span style="color:var(--bad)">✗</span>';
-$('t_src').innerHTML='A(ipapi.is)'+dot(ok.A)+' · B1(ipinfo)'+dot(ok.B1)+' · B2(ipwho)'+dot(ok.B2)+' · C(CF)'+dot(ok.C);
+// v2.23：各源国家一眼可见（冲突直观），附查询时间
+const cs0=S.consensus,ccOf={};
+((cs0&&cs0.ccs)||[]).forEach(x=>{ccOf[x.from]=x.cc;});
+const ctag=k=>(ok[k]&&ccOf[k])?'<span style="color:var(--mut)">['+ccOf[k]+']</span>':'';
+$('t_src').innerHTML='A(ipapi.is)'+dot(ok.A)+ctag('A')+' · B1(ipinfo)'+dot(ok.B1)+ctag('B1')+' · B2(ipwho)'+dot(ok.B2)+ctag('B2')+' · C(CF)'+dot(ok.C)+ctag('C')
++'<br><span style="color:var(--mut);font-size:11px">更新于 '+new Date().toLocaleTimeString('zh-CN',{hour12:false})+'</span>';
 const cs=S.consensus;
 if(!cs||!cs.primary){$('t_egress').textContent='无可用数据源';return;}
 const parts=cs.ips.map(x=>x.from+':'+maskIP(x.ip));
@@ -661,11 +673,15 @@ const ip=j&&j.dns&&j.dns.ip,geo=j&&j.dns&&j.dns.geo;
 if(!ip){$('c_edns_v').textContent='无数据';setPill('c_edns_p','unk','未知');S.unknown.edns=true;S.checks.edns='EDNS无数据';return;}
 let ecc=null;if(geo)ecc=en2cc(String(geo).split(' - ')[0]);
 $('c_edns_v').textContent=ip;
-$('c_edns_d').textContent='归属：'+(geo||'未知');
 if(ecc&&S.cc){
-if(ecc===S.cc){setPill('c_edns_p','ok','一致');S.checks.edns='EDNS一致（DNS出口'+ecc+'=代理出口'+S.cc+'）';}
-else{setPill('c_edns_p','warn','疑似泄漏');S.checks.edns='疑似DNS泄漏（DNS出口'+ecc+'≠代理出口'+S.cc+'），去dnsleaktest.com复查';}
-}else{setPill('c_edns_p','unk','未知');S.checks.edns='EDNS未知（归属地无法比对：'+ip+'）';}
+// v2.23：一致也只是"初步一致"，网页初筛不能确认无泄漏；不一致也只是"疑似"，不能直接断言泄漏
+if(ecc===S.cc){setPill('c_edns_p','ok','初步一致');
+$('c_edns_d').textContent='归属：'+(geo||'未知')+'（网页初筛，不能确认无泄漏，确认请去 dnsleaktest.com）';
+S.checks.edns='EDNS初步一致（DNS出口'+ecc+'=代理出口'+S.cc+'，需外部测试确认）';}
+else{setPill('c_edns_p','warn','疑似泄漏');
+$('c_edns_d').textContent='归属：'+(geo||'未知')+'（不能仅凭此断言泄漏，需外部测试确认）';
+S.checks.edns='疑似DNS泄漏（DNS出口'+ecc+'≠代理出口'+S.cc+'，需去dnsleaktest.com确认）';}
+}else{setPill('c_edns_p','unk','未知');$('c_edns_d').textContent='归属：'+(geo||'未知');S.checks.edns='EDNS未知（归属地无法比对：'+ip+'）';}
 }catch(e){S.covered.edns=true;S.unknown.edns=true;
 $('c_edns_v').textContent='检测失败';$('c_edns_d').textContent='接口超时或被拦截，已跳过';
 setPill('c_edns_p','fail','请求失败');S.checks.edns='EDNS未知（查询失败）';}
